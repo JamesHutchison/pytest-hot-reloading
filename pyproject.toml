@@ -14,6 +14,7 @@ packages = [{ include = "pytest_hot_reloading" }]
 
 [tool.poetry.dependencies]
 python = "~3.11"
+jurigged = "^0.5.5"
 
 
 [tool.poetry.group.dev.dependencies]
