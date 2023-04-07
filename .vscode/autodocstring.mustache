@@ -1,0 +1,23 @@
+{{! https://github.com/NilsJPWerner/autoDocstring/tree/master/src/docstring/templates for examples }}
+{{! this template is based off of Sphinx-notype }}
+{{! changes: hamburger style, starts on new line. No default descriptor }}
+
+{{summaryPlaceholder}}
+
+{{extendedSummaryPlaceholder}}
+
+{{#args}}
+:param {{var}}: {{descriptionPlaceholder}}
+{{/args}}
+{{#kwargs}}
+:param {{var}}: {{descriptionPlaceholder}}
+{{/kwargs}}
+{{#exceptions}}
+:raises {{type}}: {{descriptionPlaceholder}}
+{{/exceptions}}
+{{#returns}}
+:return: {{descriptionPlaceholder}}
+{{/returns}}
+{{#yields}}
+:yield: {{descriptionPlaceholder}}
+{{/yields}}
