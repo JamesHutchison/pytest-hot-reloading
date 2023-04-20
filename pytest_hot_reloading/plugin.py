@@ -15,13 +15,19 @@
 
 
 # The plugin hook
+import os
+import sys
+
 from pytest import Session
 
 from pytest_hot_reloading.client import PytestClient
 from pytest_hot_reloading.daemon import PytestDaemon
 
+# this is modified by the daemon so that the pytest_collection hooks does not run
+i_am_server = False
 
-def pytest_addoption(parser):
+
+def pytest_addoption(parser) -> None:
     group = parser.getgroup("daemon")
     group.addoption(
         "--daemon",
@@ -33,7 +39,25 @@ def pytest_addoption(parser):
         "--using-debug",
         action="store_true",
         default=False,
-        help="Use the debug client",
+        help="Use the debug client port. This overrides --daemon-port.",
+    )
+    group.addoption(
+        "--daemon-port",
+        action="store",
+        default=4852,
+        help="The port to use for the daemon. You generally shouldn't need to set this.",
+    )
+    group.addoption(
+        "--pytest-name",
+        action="store",
+        default="pytest",
+        help="The name of the pytest executable or module",
+    )
+    group.addoption(
+        "--daemon-timeout",
+        action="store",
+        default=(5 * 60),
+        help="The timeout in seconds to wait on a test suite to finish",
     )
 
 
@@ -41,58 +65,40 @@ def pytest_addoption(parser):
 # https://docs.pytest.org/en/stable/reference.html#_pytest.hookspec.pytest_addhooks
 
 
-def pytest_collection(session: Session):
+def pytest_collection(session: Session) -> None:
+    if session.config.option.collectonly:
+        return
+    if i_am_server:
+        return
+    _plugin_logic(session)
+
+
+def _plugin_logic(session: Session) -> None:
     # if daemon is passed, then we are the daemon
     # if daemon is not passed, then we are the client
-    daemon_port = 4852
+    daemon_port = int(session.config.option.daemon_port)
     if session.config.option.using_debug:
         daemon_port = 4853
     if session.config.option.daemon:
+        # pytest prints out "collecting ...". The leading \r prevents that
+        print("\rStarting daemon...")
         daemon = PytestDaemon(daemon_port=daemon_port)
-        daemon.run()
+        daemon.run_forever()
     else:
-        client = PytestClient(daemon_port=daemon_port)
-        client.run()
+        pytest_name = session.config.option.pytest_name
+        client = PytestClient(daemon_port=daemon_port, pytest_name=pytest_name)
+        # find the index of the first value that is not None
+        for idx, val in enumerate([pytest_name in x for x in sys.argv]):
+            if val:
+                pytest_name_index = idx
+                break
+        else:
+            print(sys.argv)
+            raise Exception(
+                "Could not find pytest name in args. "
+                "Check the configured name versus the actual name."
+            )
+        client.run(sys.argv[pytest_name_index:])
 
-
-# The plugin hook
-def pytest_configure(config):
-    if config.option.daemon:
-        # We are the daemon
-        daemon = Daemon()
-        daemon.run()
-    else:
-        # We are the client
-        client = Client()
-        client.run()
-
-
-# The plugin hook
-def pytest_unconfigure(config):
-    if config.option.daemon:
-        # We are the daemon
-        daemon = Daemon()
-        daemon.stop()
-    else:
-        # We are the client
-        client = Client()
-        client.stop()
-
-
-# The plugin hook
-def pytest_runtestloop(session):
-    # This is the entry point for the daemon
-    # It will run the tests in a loop
-    # The daemon will be stopped by the user
-    # or by the client
-    daemon = Daemon()
-    daemon.run_loop()
-
-
-# The plugin hook
-def pytest_runtest_protocol(item, nextitem):
-    # This is the entry point for the client
-    # It will send the test to the daemon
-    # and wait for the response
-    client = Client()
-    client.run_test(item)
+        # dont do any more work. Don't let pytest continue
+        os._exit(0)

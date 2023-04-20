@@ -1,26 +1,35 @@
 import json
 import socket
+import sys
+import xmlrpc.client
+
+from pytest import Session
+
+from pytest_hot_reloading.daemon import PytestDaemon
 
 
 class PytestClient:
-    def __init__(self, daemon_host: str = "localhost", daemon_port: int = 4852) -> None:
+    def __init__(
+        self, daemon_host: str = "localhost", daemon_port: int = 4852, pytest_name: str = "pytest"
+    ) -> None:
         self._socket = None
         self._daemon_host = daemon_host
         self._daemon_port = daemon_port
+        self._pytest_name = pytest_name
 
     def run(self, args: list[str]) -> str:
         self._start_daemon_if_needed()
 
-        # Connect to the daemon
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.connect((self._daemon_host, self._daemon_port))
+        server_url = f"http://{self._daemon_host}:{self._daemon_port}"
+        server = xmlrpc.client.ServerProxy(server_url)
 
-        # send the args to the daemon using json
-        self._socket.sendall(json.dumps(args).encode())
+        result = server.run_pytest(args)
 
-        # Receive the message from the daemon
-        data = self._socket.recv(1024)
-        return data.decode("utf-8")
+        stdout = result.get("stdout", "")
+        stderr = result.get("stderr", "")
+
+        print(stdout, file=sys.stdout)
+        print(stderr, file=sys.stderr)
 
     def abort(self) -> None:
         # Close the socket
@@ -34,35 +43,16 @@ class PytestClient:
         try:
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self._socket.connect((self._daemon_host, self._daemon_port))
+            # the daemon is running
+            # close the socket
+            self._socket.close()
         except ConnectionRefusedError:
             # the daemon is not running
             # start the daemon
             self._start_daemon()
-        else:
-            # the daemon is running
-            # close the socket
-            self._socket.close()
 
     def _start_daemon(self) -> None:
         # start the daemon
-
-
-    # def run_test(self, item):
-    #     # Send the test to the daemon
-    #     self._socket.sendall(item.name.encode())
-
-    #     # Receive the message from the daemon
-    #     data = self._socket.recv(1024)
-    #     print(data)
-
-    # def pytest_collection(self, session):
-    #     # if the daemon is not running, start it
-    #     if not self._daemon.is_running():
-    #         self._daemon.start()
-
-    #     # This is the entry point for the daemon
-    #     # It will run the tests in a loop
-    #     # The daemon will be stopped by the user
-    #     # or by the client
-    #     daemon = Daemon()
-    #     daemon.run_loop()
+        PytestDaemon.start(
+            host=self._daemon_host, port=self._daemon_port, pytest_name=self._pytest_name
+        )
