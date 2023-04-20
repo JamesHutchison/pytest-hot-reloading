@@ -52,7 +52,7 @@
                 "editor.codeActionsOnSave": {
                     "source.organizeImports": true
                 },
-                "autoDocstring.customTemplatePath": ".vscode/autodocstring.template",
+                "autoDocstring.customTemplatePath": ".vscode/autodocstring.mustache",
                 "ruff.path": [
                     "/workspaces/pytest-hot-reloading/.venv/bin/ruff"
                 ]
