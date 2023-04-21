@@ -123,6 +123,7 @@ class PytestDaemon:
         sys.stderr = stderr
 
         try:
+            # args must omit the calling program
             pytest.main(["--color=yes"] + args)
         finally:
             # restore originals

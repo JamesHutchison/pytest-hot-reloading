@@ -100,7 +100,12 @@ def _plugin_logic(session: Session) -> None:
         pytest_name = session.config.option.pytest_name
         client = PytestClient(daemon_port=daemon_port, pytest_name=pytest_name)
         # find the index of the first value that is not None
-        for idx, val in enumerate([pytest_name in x for x in sys.argv]):
+        for idx, val in enumerate(
+            [
+                x.endswith(pytest_name) or x.endswith(f"{pytest_name}/__main__.py")
+                for x in sys.argv
+            ]
+        ):
             if val:
                 pytest_name_index = idx
                 break
