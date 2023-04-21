@@ -86,6 +86,11 @@ def _jurigged_logger(x: str) -> None:
 
 
 def _plugin_logic(session: Session) -> None:
+    """
+    The core plugin logic. This is where it splits based on whether we are the server or client.
+
+    In either case, the pytest logic will not continue after this.
+    """
     # if daemon is passed, then we are the daemon / server
     # if daemon is not passed, then we are the client
     daemon_port = int(session.config.option.daemon_port)
@@ -122,6 +127,18 @@ def _plugin_logic(session: Session) -> None:
 
 
 def _get_pattern_filters(session: Session) -> str | Callable[[str], bool]:
+    """
+    Jurigged takes in a pattern argument. The argument is either a glob string
+    or a function that returns True if the path passed into it should be watched.
+
+    This creates a function filter that will return True if the path matches.
+
+    The logic takes in the --daemon-watch-globs and --daemon-ignore-watch-globs options
+    and creates a function that will return True if the path matches the watch globs.
+
+    The seen_paths set is used to prevent duplicate paths from being watched and also
+    acts as a short circuit for paths that have already been seen.
+    """
     global seen_paths
 
     def normalize(glob: str) -> str:
