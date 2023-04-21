@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
+# git settings
+git config --global pull.rebase true
+git config --global remote.origin.prune true
+
 # if the .venv directory was mounted as a named volume, it needs the ownership changed
 sudo chown vscode .venv || true
 
