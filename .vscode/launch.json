@@ -16,7 +16,7 @@
             "justMyCode": false,
         },
         {
-            "name": "Test Server",
+            "name": "Pytest Daemon",
             "type": "python",
             "request": "launch",
             "module": "pytest",
