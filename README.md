@@ -1,7 +1,7 @@
 # A PyTest Hot Reloading Plugin
 A hot reloading pytest daemon, implemented as a plugin.
 
-This uses the jurigged library to watch files.
+This uses the [jurigged](https://github.com/breuleux/jurigged) library to watch files.
 
 If it takes less than 5 seconds to do all of the imports
 necessary to run a unit test, then you probably don't need this.
