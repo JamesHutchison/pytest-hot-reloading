@@ -9,4 +9,5 @@ def do_setup() -> None:
 
 def test_simple() -> None:
     do_setup()
+
     assert 1 == 1
