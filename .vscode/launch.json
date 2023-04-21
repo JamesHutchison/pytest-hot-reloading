@@ -9,14 +9,28 @@
             "type": "python",
             "request": "launch",
             "module": "pytest",
-            "justMyCode": true,
+            "justMyCode": false,
             "args": [
                 "--daemon",
                 "--daemon-watch-globs",
-                "./pytest_hot_reloading/*.py:./tests/*.py",
+                "./pytest_hot_reloading/daemon*.py:./pytest_hot_reloading/plugin.py",
                 "--daemon-ignore-watch-globs",
-                "./.venv/*"
+                "./.venv/*" // this is the default value
             ]
+        },
+        {
+            "name": "Pytest module (no args)",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "justMyCode": false
+        },
+        {
+            "name": "Pytest (no args)",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/pytest-hot-reloading/.venv/bin/pytest",
+            "justMyCode": false
         },
         {
             "name": "Python: Debug Unit Tests",
