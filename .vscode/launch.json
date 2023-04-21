@@ -22,7 +22,11 @@
             "module": "pytest",
             "justMyCode": true,
             "args": [
-                "--daemon"
+                "--daemon",
+                "--daemon-watch-globs",
+                "./pytest_hot_reloading/*.py:./tests/*.py",
+                "--daemon-ignore-watch-globs",
+                "./.venv/*"
             ]
         }
     ]
