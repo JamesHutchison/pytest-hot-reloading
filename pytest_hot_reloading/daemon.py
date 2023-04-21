@@ -27,9 +27,6 @@ class PytestDaemon:
         watch_globs: str | None = None,
         ignore_watch_globs: str | None = None,
     ) -> None:
-        jurigged_path = which("jurigged")
-        if not jurigged_path:
-            raise Exception("jurigged is not installed. Install with 'pip install jurigged'")
         # start the daemon such that it will not close when the parent process closes
         if host == "localhost":
             args = [
