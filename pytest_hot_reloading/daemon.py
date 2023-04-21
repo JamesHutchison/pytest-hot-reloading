@@ -1,8 +1,10 @@
 import os
+import re
 import socket
 import subprocess
 import sys
 import time
+from shutil import which
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
@@ -18,18 +20,32 @@ class PytestDaemon:
         return f".pytest_hot_reloading_{self._daemon_port}.pid"
 
     @staticmethod
-    def start(host: str, port: int, pytest_name: str = "pytest") -> None:
+    def start(
+        host: str,
+        port: int,
+        pytest_name: str = "pytest",
+        watch_globs: str | None = None,
+        ignore_watch_globs: str | None = None,
+    ) -> None:
+        jurigged_path = which("jurigged")
+        if not jurigged_path:
+            raise Exception("jurigged is not installed. Install with 'pip install jurigged'")
         # start the daemon such that it will not close when the parent process closes
         if host == "localhost":
+            args = [
+                sys.executable,
+                "-m",
+                pytest_name,
+                "--daemon",
+                "--daemon-port",
+                str(port),
+            ]
+            if watch_globs:
+                args += ["--daemon-watch-globs", watch_globs]
+            if ignore_watch_globs:
+                args += ["--daemon-ignore-watch-globs", ignore_watch_globs]
             subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    pytest_name,
-                    "--daemon",
-                    "--daemon-port",
-                    str(port),
-                ],
+                args,
                 env=os.environ,
                 cwd=os.getcwd(),
             )
@@ -121,14 +137,12 @@ class PytestDaemon:
         print(stdout_str, file=sys.stdout)
         print(stderr_str, file=sys.stderr)
         return {
-            "stdout": self._remove_ansi_escape(stdout_str),
-            "stderr": self._remove_ansi_escape(stderr_str),
+            "stdout": self._remove_ansi_escape(stdout_str).encode("utf-8"),
+            "stderr": self._remove_ansi_escape(stderr_str).encode("utf-8"),
         }
 
     def _remove_ansi_escape(self, s: str) -> str:
-        import re
-
-        return re.sub(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))", "", s)
+        return re.sub(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))", "", s, flags=re.MULTILINE)
 
     def _workaround_library_issues(self, args: list[str]) -> None:
         # load modules that workaround library issues, as needed

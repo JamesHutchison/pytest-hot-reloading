@@ -1,9 +1,6 @@
-import json
 import socket
 import sys
 import xmlrpc.client
-
-from pytest import Session
 
 from pytest_hot_reloading.daemon import PytestDaemon
 
@@ -25,8 +22,8 @@ class PytestClient:
 
         result = server.run_pytest(args)
 
-        stdout = result.get("stdout", "")
-        stderr = result.get("stderr", "")
+        stdout = result["stdout"].data.decode("utf-8")
+        stderr = result["stderr"].data.decode("utf-8")
 
         print(stdout, file=sys.stdout)
         print(stderr, file=sys.stderr)
