@@ -5,17 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Debug Unit Tests",
-            "type": "python",
-            "request": "launch",
-            "purpose": [
-                "debug-test",
-                "debug-in-terminal"
-            ],
-            "console": "integratedTerminal",
-            "justMyCode": false,
-        },
-        {
             "name": "Pytest Daemon",
             "type": "python",
             "request": "launch",
@@ -28,6 +17,17 @@
                 "--daemon-ignore-watch-globs",
                 "./.venv/*"
             ]
+        },
+        {
+            "name": "Python: Debug Unit Tests",
+            "type": "python",
+            "request": "launch",
+            "purpose": [
+                "debug-test",
+                "debug-in-terminal"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
         }
     ]
 }
