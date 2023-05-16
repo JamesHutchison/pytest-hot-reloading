@@ -16,16 +16,16 @@ packages = [{ include = "pytest_hot_reloading" }]
 python = "~3.11"
 jurigged = "^0.5.5"
 
-
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.2.0"
 ruff = "^0.0.261"
 black = "^23.3.0"
 pytest = "^7.2.2"
+megamock = "^0.1.0b3"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "-p pytest_hot_reloading.plugin"
+addopts = "-p pytest_hot_reloading.plugin -p megamock.plugins.pytest"

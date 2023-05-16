@@ -1,6 +1,8 @@
 import time
 from functools import lru_cache
 
+from megamock import MegaMock, MegaPatch
+
 
 @lru_cache()
 def do_setup() -> None:
@@ -23,3 +25,20 @@ def test_simple() -> None:
     # This will still fail on the last assert, even though it should pass
 
     print("foo")
+
+
+class AClassForMegaMockTesting:
+    def a_method(self) -> str:
+        return "val"
+
+
+def test_megamock_usage():
+    patch = MegaPatch.it(AClassForMegaMockTesting.a_method, return_value="returned value")
+    patch.mock.return_value = "else"
+
+    assert AClassForMegaMockTesting().a_method() == "else"
+
+    mocked_class = MegaMock.it(AClassForMegaMockTesting)
+    mocked_class.a_method.return_value = "another_val"
+
+    assert mocked_class.a_method() == "another_val"
