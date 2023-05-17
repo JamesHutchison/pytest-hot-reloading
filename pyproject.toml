@@ -15,6 +15,7 @@ packages = [{ include = "pytest_hot_reloading" }]
 [tool.poetry.dependencies]
 python = "~3.11"
 jurigged = "^0.5.5"
+robyn = "^0.29.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.2.0"

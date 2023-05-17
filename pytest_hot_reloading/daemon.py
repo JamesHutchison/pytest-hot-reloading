@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import socket
@@ -7,6 +8,7 @@ import time
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
+from robyn import Request, Robyn, jsonify
 
 
 class PytestDaemon:
@@ -81,6 +83,27 @@ class PytestDaemon:
 
         server.serve_forever()
 
+    def run_forever_robyn(self) -> None:
+        def start_robyn():
+            app = Robyn(__file__)
+
+            @app.post("/pytest/")
+            async def pytest(request: Request):
+                response = self.run_pytest(json.loads(request.body))
+                resp = jsonify(response)
+                return resp
+
+            host = "127.0.0.1" if self._daemon_host == "localhost" else self._daemon_host
+            app.start(host, self._daemon_port)
+
+        try:
+            start_robyn()
+        except OSError as err:
+            if "Address already in use" in str(err):
+                self._kill_existing_daemon()
+                time.sleep(2)
+                start_robyn()
+
     def _write_pid_file(self) -> None:
         with open(self.pid_file, "w") as f:
             f.write(str(os.getpid()))
@@ -96,6 +119,7 @@ class PytestDaemon:
     def run_pytest(self, args: list[str]) -> dict:
         # run pytest using command line args
         # run the pytest main logic
+        start = time.time()
 
         self._workaround_library_issues(args)
 
@@ -133,6 +157,7 @@ class PytestDaemon:
 
             print(stdout_str, file=sys.stdout)
             print(stderr_str, file=sys.stderr)
+        print(time.time() - start)
         return {
             "stdout": self._remove_ansi_escape(stdout_str).encode("utf-8"),
             "stderr": self._remove_ansi_escape(stderr_str).encode("utf-8"),

@@ -6,6 +6,7 @@ import fnmatch
 import os
 import re
 import sys
+import time
 from typing import Callable
 
 import jurigged
@@ -75,6 +76,7 @@ def pytest_collection(session: Session) -> None:
     if i_am_server:
         return
     _plugin_logic(session)
+    # return []
 
 
 def _jurigged_logger(x: str) -> None:
@@ -146,8 +148,10 @@ def _plugin_logic(session: Session) -> None:
         jurigged.watch(pattern=pattern, logger=_jurigged_logger, poll=True)
         daemon = PytestDaemon(daemon_port=daemon_port)
 
+        # daemon.run_forever_robyn()
         daemon.run_forever()
     else:
+        start = time.time()
         pytest_name = session.config.option.pytest_name
         client = PytestClient(daemon_port=daemon_port, pytest_name=pytest_name)
         # find the index of the first value that is not None
@@ -166,7 +170,9 @@ def _plugin_logic(session: Session) -> None:
                 "Could not find pytest name in args. "
                 "Check the configured name versus the actual name."
             )
+        # client.run_robyn(sys.argv[pytest_name_index + 1 :])
         client.run(sys.argv[pytest_name_index + 1 :])
+        print(f"plugin {time.time() - start}")
 
         # dont do any more work. Don't let pytest continue
         os._exit(0)
