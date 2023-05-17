@@ -4,7 +4,6 @@ import socket
 import subprocess
 import sys
 import time
-from shutil import which
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
@@ -127,13 +126,13 @@ class PytestDaemon:
             sys.stdout = stdout_bak
             sys.stderr = stderr_bak
 
-        stdout.seek(0)
-        stderr.seek(0)
-        stdout_str = stdout.read()
-        stderr_str = stderr.read()
+            stdout.seek(0)
+            stderr.seek(0)
+            stdout_str = stdout.read()
+            stderr_str = stderr.read()
 
-        print(stdout_str, file=sys.stdout)
-        print(stderr_str, file=sys.stderr)
+            print(stdout_str, file=sys.stdout)
+            print(stderr_str, file=sys.stderr)
         return {
             "stdout": self._remove_ansi_escape(stdout_str).encode("utf-8"),
             "stderr": self._remove_ansi_escape(stderr_str).encode("utf-8"),

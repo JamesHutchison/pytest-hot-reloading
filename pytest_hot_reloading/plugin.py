@@ -1,6 +1,7 @@
 """
 Pytest Hot Reloading plugin
 """
+import ast
 import fnmatch
 import os
 import re
@@ -8,6 +9,7 @@ import sys
 from typing import Callable
 
 import jurigged
+import jurigged.codetools as jurigged_codetools
 from pytest import Config, Item, Session
 
 from pytest_hot_reloading.client import PytestClient
@@ -85,6 +87,48 @@ def _jurigged_logger(x: str) -> None:
     """
 
 
+OrigFunctionDefinition = jurigged_codetools.FunctionDefinition
+
+
+class NewFunctionDefinition(OrigFunctionDefinition):
+    def reevaluate(self, new_node, glb):
+        new_node = self.apply_assertion_rewrite(new_node, glb)
+        return super().reevaluate(new_node, glb)
+
+    def apply_assertion_rewrite(self, ast_func, glb):
+        from _pytest.assertion.rewrite import AssertionRewriter
+
+        nodes: list[ast.AST] = [ast_func]
+        while nodes:
+            node = nodes.pop()
+            for name, field in ast.iter_fields(node):
+                if isinstance(field, list):
+                    new: list[ast.AST] = []
+                    for i, child in enumerate(field):
+                        if isinstance(child, ast.Assert):
+                            # Transform assert.
+                            new.extend(
+                                AssertionRewriter(glb["__file__"], None, None).visit(child)
+                            )
+                        else:
+                            new.append(child)
+                            if isinstance(child, ast.AST):
+                                nodes.append(child)
+                    setattr(node, name, new)
+                elif (
+                    isinstance(field, ast.AST)
+                    # Don't recurse into expressions as they can't contain
+                    # asserts.
+                    and not isinstance(field, ast.expr)
+                ):
+                    nodes.append(field)
+        return ast_func
+
+
+# monkey patch in new definition
+jurigged_codetools.FunctionDefinition = NewFunctionDefinition
+
+
 def _plugin_logic(session: Session) -> None:
     """
     The core plugin logic. This is where it splits based on whether we are the server or client.
@@ -98,8 +142,10 @@ def _plugin_logic(session: Session) -> None:
         # pytest prints out "collecting ...". The leading \r prevents that
         print("\rStarting daemon...")
         pattern = _get_pattern_filters(session)
-        jurigged.watch(pattern=pattern, logger=_jurigged_logger)
+        # TODO: intelligently use poll versus watchman
+        jurigged.watch(pattern=pattern, logger=_jurigged_logger, poll=True)
         daemon = PytestDaemon(daemon_port=daemon_port)
+
         daemon.run_forever()
     else:
         pytest_name = session.config.option.pytest_name

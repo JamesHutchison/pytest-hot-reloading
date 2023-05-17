@@ -6,6 +6,11 @@ from pytest_hot_reloading.daemon import PytestDaemon
 
 
 class PytestClient:
+    _socket: socket.socket | None
+    _daemon_host: str
+    _daemon_port: int
+    _pytest_name: str
+
     def __init__(
         self, daemon_host: str = "localhost", daemon_port: int = 4852, pytest_name: str = "pytest"
     ) -> None:
@@ -30,7 +35,8 @@ class PytestClient:
 
     def abort(self) -> None:
         # Close the socket
-        self._socket.close()
+        if self._socket:
+            self._socket.close()
 
     def _start_daemon_if_needed(self) -> None:
         # check if the daemon is running on the expected host and port

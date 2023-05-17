@@ -13,6 +13,24 @@ files = [
 ]
 
 [[package]]
+name = "asttokens"
+version = "2.2.1"
+description = "Annotate AST trees with source code positions"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "asttokens-2.2.1-py2.py3-none-any.whl", hash = "sha256:6b0ac9e93fb0335014d382b8fa9b3afa7df546984258005da0b9e7095b3deb1c"},
+    {file = "asttokens-2.2.1.tar.gz", hash = "sha256:4622110b2a6f30b77e1473affaa97e711bc2f07d3f10848420ff1898edbe94f3"},
+]
+
+[package.dependencies]
+six = "*"
+
+[package.extras]
+test = ["astroid", "pytest"]
+
+[[package]]
 name = "attrs"
 version = "22.2.0"
 description = "Classes Without Boilerplate"
@@ -136,6 +154,21 @@ files = [
 ]
 
 [[package]]
+name = "executing"
+version = "1.2.0"
+description = "Get the currently executing AST node of a frame, and other information"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "executing-1.2.0-py2.py3-none-any.whl", hash = "sha256:0314a69e37426e3608aada02473b4161d4caf5a4b244d1d0c48072b8fee7bacc"},
+    {file = "executing-1.2.0.tar.gz", hash = "sha256:19da64c18d2d851112f09c287f8d3dbbdf725ab0e569077efb6cdcbd3497c107"},
+]
+
+[package.extras]
+tests = ["asttokens", "littleutils", "pytest", "rich"]
+
+[[package]]
 name = "iniconfig"
 version = "2.0.0"
 description = "brain-dead simple config-ini parsing"
@@ -182,6 +215,22 @@ watchdog = ">=1.0.2"
 
 [package.extras]
 develoop = ["giving (>=0.4.1,<0.5.0)", "rich (>=10.13.0)"]
+
+[[package]]
+name = "megamock"
+version = "0.1.0b3"
+description = "Mega mocking capabilities - stop using dot-notated paths!"
+category = "dev"
+optional = false
+python-versions = ">=3.10,<4.0"
+files = [
+    {file = "megamock-0.1.0b3-py3-none-any.whl", hash = "sha256:2eea4619ded8a204b0f9a67f40620d5aa8fb6323fc25976cc27f580476f4a7ac"},
+    {file = "megamock-0.1.0b3.tar.gz", hash = "sha256:11ff71ee1725f49a63cb7f540231ac626ab6e530b02f0ea4fd75b4c5e0a12aa8"},
+]
+
+[package.dependencies]
+asttokens = ">=2.2.1,<2.3.0"
+varname = {version = ">=0.10.0,<0.11.0", extras = ["asttokens"]}
 
 [[package]]
 name = "mypy"
@@ -383,6 +432,24 @@ files = [
 ]
 
 [[package]]
+name = "varname"
+version = "0.10.0"
+description = "Dark magics about variable names in python."
+category = "dev"
+optional = false
+python-versions = ">=3.6,<4.0"
+files = [
+    {file = "varname-0.10.0-py3-none-any.whl", hash = "sha256:20748d5cd3e125350726cd39d2cbd0e3000f30b3e0d3d5fe827efa0e71729809"},
+    {file = "varname-0.10.0.tar.gz", hash = "sha256:045f7a409b3e91a760ab10a5539aabbb292db9d685f3011920b85fd4dbc5b9e3"},
+]
+
+[package.dependencies]
+executing = ">=1.1,<2.0"
+
+[package.extras]
+all = ["asttokens (>=2.0.0,<3.0.0)", "pure_eval (<1.0.0)"]
+
+[[package]]
 name = "watchdog"
 version = "3.0.0"
 description = "Filesystem events monitoring"
@@ -437,4 +504,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "3ba066d5067501f3697764e0a8f4dc3ea55e994ddf13e3b83f7474913acb3162"
+content-hash = "24d7cfd846676ae22c692413f6c59513803f3af0df985d67c9e937da115c69fb"
