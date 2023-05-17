@@ -9,13 +9,6 @@ from xmlrpc.server import SimpleXMLRPCServer
 import pytest
 
 
-class CustomXMLServer(SimpleXMLRPCServer):
-    def service_actions(self) -> None:
-        super().service_actions()
-        # let other threads run
-        time.sleep(0.2)
-
-
 class PytestDaemon:
     def __init__(self, daemon_host: str = "localhost", daemon_port: int = 4852) -> None:
         self._daemon_host = daemon_host
@@ -74,12 +67,12 @@ class PytestDaemon:
 
     def run_forever(self) -> None:  # create an XML-RPC server
         try:
-            server = CustomXMLServer((self._daemon_host, self._daemon_port))
+            server = SimpleXMLRPCServer((self._daemon_host, self._daemon_port))
         except OSError as err:
             if "Address already in use" in str(err):
                 self._kill_existing_daemon()
                 time.sleep(2)
-                server = CustomXMLServer((self._daemon_host, self._daemon_port))
+                server = SimpleXMLRPCServer((self._daemon_host, self._daemon_port))
 
         self._write_pid_file()
 
