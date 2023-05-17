@@ -2,13 +2,13 @@ name: Test
 description: Install dependencies and run tests
 runs:
   using: composite
-    steps:
-    - name: Install dependencies
-      run: |
-        poetry install --with=dev
-    - name: Lint with ruff
-      run: |
-        poetry run ruff .
-    - name: Test with pytest
-      run: |
-        poetry run pytest
+  steps:
+  - name: Install dependencies
+    run: |
+      poetry install --with=dev
+  - name: Lint with ruff
+    run: |
+      poetry run ruff .
+  - name: Test with pytest
+    run: |
+      poetry run pytest
