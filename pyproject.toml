@@ -13,8 +13,8 @@ readme = "README.md"
 packages = [{ include = "pytest_hot_reloading" }]
 
 [tool.poetry.dependencies]
-python = "~3.11"
-jurigged = "^0.5.5"
+python = "~3.10"
+jurigged = "~0.5.5"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.2.0"
