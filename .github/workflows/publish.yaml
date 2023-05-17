@@ -4,6 +4,7 @@
 name: Test, Build, and Publish
 
 on:
+  workflow_dispatch:
   release:
     types: [ published ]
 
