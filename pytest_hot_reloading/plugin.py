@@ -65,16 +65,16 @@ def pytest_addoption(parser) -> None:
 # https://docs.pytest.org/en/stable/reference.html#_pytest.hookspec.pytest_addhooks
 
 
-def pytest_collection(session: Session) -> None:
+def pytest_cmdline_main(config: Config) -> None:
     """
     This hook is called by pytest and is one of the first hooks.
     """
     # early escapes
-    if session.config.option.collectonly:
+    if config.option.collectonly:
         return
     if i_am_server:
         return
-    _plugin_logic(session)
+    _plugin_logic(config)
 
 
 def _jurigged_logger(x: str) -> None:
@@ -129,7 +129,7 @@ class NewFunctionDefinition(OrigFunctionDefinition):
 jurigged_codetools.FunctionDefinition = NewFunctionDefinition
 
 
-def _plugin_logic(session: Session) -> None:
+def _plugin_logic(config: Config) -> None:
     """
     The core plugin logic. This is where it splits based on whether we are the server or client.
 
@@ -137,18 +137,18 @@ def _plugin_logic(session: Session) -> None:
     """
     # if daemon is passed, then we are the daemon / server
     # if daemon is not passed, then we are the client
-    daemon_port = int(session.config.option.daemon_port)
-    if session.config.option.daemon:
+    daemon_port = int(config.option.daemon_port)
+    if config.option.daemon:
         # pytest prints out "collecting ...". The leading \r prevents that
         print("\rStarting daemon...")
-        pattern = _get_pattern_filters(session)
+        pattern = _get_pattern_filters(config)
         # TODO: intelligently use poll versus watchman
         jurigged.watch(pattern=pattern, logger=_jurigged_logger, poll=True)
         daemon = PytestDaemon(daemon_port=daemon_port)
 
         daemon.run_forever()
     else:
-        pytest_name = session.config.option.pytest_name
+        pytest_name = config.option.pytest_name
         client = PytestClient(daemon_port=daemon_port, pytest_name=pytest_name)
         # find the index of the first value that is not None
         for idx, val in enumerate(
@@ -172,7 +172,7 @@ def _plugin_logic(session: Session) -> None:
         os._exit(0)
 
 
-def _get_pattern_filters(session: Session) -> str | Callable[[str], bool]:
+def _get_pattern_filters(config: Config) -> str | Callable[[str], bool]:
     """
     Jurigged takes in a pattern argument. The argument is either a glob string
     or a function that returns True if the path passed into it should be watched.
@@ -196,12 +196,12 @@ def _get_pattern_filters(session: Session) -> str | Callable[[str], bool]:
             glob = os.path.join(glob, "*")
         return glob
 
-    watch_globs = session.config.option.daemon_watch_globs.split(":")
+    watch_globs = config.option.daemon_watch_globs.split(":")
     regex_matches = [re.compile(fnmatch.translate(normalize(glob))).match for glob in watch_globs]
 
-    ignore_watch_globs = session.config.option.daemon_ignore_watch_globs
+    ignore_watch_globs = config.option.daemon_ignore_watch_globs
     if ignore_watch_globs:
-        ignore_globs = session.config.option.daemon_ignore_watch_globs.split(":")
+        ignore_globs = config.option.daemon_ignore_watch_globs.split(":")
         ignore_regex_matches = [
             re.compile(fnmatch.translate(normalize(glob))).match for glob in ignore_globs
         ]
