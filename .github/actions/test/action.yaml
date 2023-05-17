@@ -6,9 +6,12 @@ runs:
   - name: Install dependencies
     run: |
       poetry install --with=dev
+    shell: bash
   - name: Lint with ruff
     run: |
       poetry run ruff .
+    shell: bash
   - name: Test with pytest
     run: |
       poetry run pytest
+    shell: bash
