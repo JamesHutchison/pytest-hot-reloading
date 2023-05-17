@@ -8,30 +8,26 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  release:
+    types: [ published ]
 
 permissions:
   contents: read
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
-    - name: Setup Poetry
-      # You may pin to the exact commit or the version.
-      uses: Gr1N/setup-poetry@12c727a3dcf8c1a548d8d041c9d5ef5cebb3ba2e
-    - name: Install dependencies
+    - name: test
+      uses: ./.github/actions/test
+  build_and_publish:
+    if: github.repository == 'JamesHutchison/pytest-hot-reloading' && github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-latest
+    steps:
+    - name: test
+      uses: ./.github/actions/test
+    - name: Build distributions
       run: |
-        poetry install --with=dev
-    - name: Lint with ruff
-      run: |
-        ruff .
-    - name: Test with pytest
-      run: |
-        pytest
+        poetry build
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
