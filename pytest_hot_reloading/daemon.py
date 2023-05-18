@@ -1,14 +1,17 @@
 import copy
+import math
 import os
 import re
 import socket
 import subprocess
 import sys
 import time
+from collections import UserDict, deque
+from typing import Counter
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
-from cachetools import TTLCache
+from cachetools import LRUCache, TTLCache
 
 
 class PytestDaemon:
@@ -156,13 +159,56 @@ class PytestDaemon:
         pass
 
 
-session_cache = TTLCache(16, 500)
+session_item_cache = TTLCache(16, 500)
+# hack: keeping a session cache since pytest has session references
+#       littered everywhere on objects
+prior_sessions = set()
+
+
+def _manage_prior_session_garbage(session: pytest.Session) -> None:
+    """
+    Pytest creates a bunch of objects and nodes and assigns the session
+    to them. This creates a lot of dangling references to sessions that
+    can come up later due to reuse. To work around this, all prior
+    sessions have their dicts updated to point to the latest session.
+
+    To avoid accumulating too many sessions and taking up memory as well
+    as runtime, this cleans out all the sessions that appear to be redundant.
+
+    This isn't quite perfect but should maybe be enough. There's likely some
+    corner cases where the session with the fewest references doesn't meet the
+    count requirement. There may also be cases where the smallest session
+    has something important on it and we don't want to clean it up, but it
+    gets cleaned up anyways.
+
+    The use case that drew attention to this problem was an autouse session
+    fixture. The fixture's request object was referencing the session that
+    used the fixture, which at some point in the flow creates a problem
+    because that old session is not properly set up anymore.
+    """
+    ref_counts = {
+        prior_session: sys.getrefcount(prior_session) for prior_session in prior_sessions
+    }
+    counts = Counter(ref_counts.values())
+    min_count = min(counts.keys()) if ref_counts else 0
+
+    for prior_session in list(prior_sessions):
+        if (
+            len(prior_sessions) > 5
+            and counts[min_count] > 3
+            and ref_counts[prior_session] <= min_count
+        ):
+            prior_sessions.remove(prior_session)
+        else:
+            prior_session.__dict__ = session.__dict__
 
 
 def _pytest_main(config: pytest.Config, session: pytest.Session):
     """
     A monkey patched version of _pytest._main that caches test collection
     """
+    _manage_prior_session_garbage(session)
+
     import _pytest.capture
 
     _pytest.capture.CaptureManager.stop_global_capturing = lambda self: None
@@ -176,7 +222,7 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
 
     _pytest.capture.CaptureManager.resume_global_capture = start_global_capture_if_needed
 
-    def best_effort_copy(item, depth_remaining=2):
+    def best_effort_copy(item, depth_remaining=3):
         """
         Copy test items. The items have references to modules and
         other things that cannot be deep copied.
@@ -203,13 +249,13 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
     # not 100% sure this is always the case
     session_key = tuple(config.args)
     try:
-        items = session_cache[session_key]
+        items = session_item_cache[session_key]
     except KeyError:
         # not in the cache, do test collection
         start = time.time()
         config.hook.pytest_collection(session=session)
         print(f"Pytest Daemon: Collection took {(time.time() - start):0.3f} seconds")
-        session_cache[session_key] = tuple(best_effort_copy(x) for x in session.items)
+        session_item_cache[session_key] = tuple(best_effort_copy(x) for x in session.items)
     else:
         print("Pytest Daemon: Using cached collection")
         # Assign the prior test items (tests to run) and config to the current session
@@ -222,6 +268,7 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
             if i._request:
                 i._request._pyfuncitem = i
     config.hook.pytest_runtestloop(session=session)
+    prior_sessions.add(session)
 
     if session.testsfailed:
         return pytest.ExitCode.TESTS_FAILED
