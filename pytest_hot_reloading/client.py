@@ -1,8 +1,7 @@
 import socket
 import sys
+import time
 import xmlrpc.client
-
-from pytest_hot_reloading.daemon import PytestDaemon
 
 
 class PytestClient:
@@ -25,7 +24,9 @@ class PytestClient:
         server_url = f"http://{self._daemon_host}:{self._daemon_port}"
         server = xmlrpc.client.ServerProxy(server_url)
 
+        start = time.time()
         result = server.run_pytest(args)
+        print(f"Daemon took {(time.time() - start):.3f} seconds to reply")
 
         stdout = result["stdout"].data.decode("utf-8")
         stderr = result["stderr"].data.decode("utf-8")
@@ -55,6 +56,8 @@ class PytestClient:
             self._start_daemon()
 
     def _start_daemon(self) -> None:
+        from pytest_hot_reloading.daemon import PytestDaemon
+
         # start the daemon
         PytestDaemon.start(
             host=self._daemon_host, port=self._daemon_port, pytest_name=self._pytest_name
