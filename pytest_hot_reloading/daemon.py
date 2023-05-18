@@ -1,17 +1,15 @@
 import copy
-import math
 import os
 import re
 import socket
 import subprocess
 import sys
 import time
-from collections import UserDict, deque
 from typing import Counter
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
-from cachetools import LRUCache, TTLCache
+from cachetools import TTLCache
 
 
 class PytestDaemon:
