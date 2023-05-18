@@ -75,6 +75,8 @@ def pytest_cmdline_main(config: Config) -> None:
     if i_am_server:
         return
     _plugin_logic(config)
+    # dont do any more work. Don't let pytest continue
+    return 0  # status code 0
 
 
 def _jurigged_logger(x: str) -> None:
@@ -167,9 +169,6 @@ def _plugin_logic(config: Config) -> None:
                 "Check the configured name versus the actual name."
             )
         client.run(sys.argv[pytest_name_index + 1 :])
-
-        # dont do any more work. Don't let pytest continue
-        os._exit(0)
 
 
 def _get_pattern_filters(config: Config) -> str | Callable[[str], bool]:
