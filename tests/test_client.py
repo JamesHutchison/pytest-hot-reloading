@@ -1,3 +1,4 @@
+import re
 import socket
 import xmlrpc.client
 
@@ -29,7 +30,7 @@ class TestPytestClient:
 
         out, err = capsys.readouterr()
 
-        assert out == "stdout\n"
+        assert re.match(r"Daemon took \S+ seconds to reply\nstdout\n", out)
         assert err == "stderr\n"
 
     def test_aborting_should_close_the_socket(self) -> None:

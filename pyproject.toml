@@ -6,7 +6,7 @@ line-length = 98
 
 [tool.poetry]
 name = "pytest-hot-reloading"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 description = ""
 authors = ["James Hutchison <jamesghutchison@proton.me>"]
 readme = "README.md"
@@ -15,6 +15,7 @@ packages = [{ include = "pytest_hot_reloading" }]
 [tool.poetry.dependencies]
 python = "^3.10"
 jurigged = "^0.5.5"
+cachetools = "^5.3.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.2.0"

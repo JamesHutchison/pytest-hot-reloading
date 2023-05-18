@@ -1,3 +1,4 @@
+import copy
 import os
 import re
 import socket
@@ -7,6 +8,7 @@ import time
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
+from cachetools import TTLCache
 
 
 class PytestDaemon:
@@ -118,11 +120,19 @@ class PytestDaemon:
         sys.stdout = stdout
         sys.stderr = stderr
 
+        import _pytest.main
+
+        # monkeypatch in the main that does test collection caching
+        orig_main = _pytest.main._main
+        _pytest.main._main = _pytest_main
+
         try:
             # args must omit the calling program
             pytest.main(["--color=yes"] + args)
         finally:
             # restore originals
+            _pytest.main._main = orig_main
+
             sys.stdout = stdout_bak
             sys.stderr = stderr_bak
 
@@ -144,3 +154,77 @@ class PytestDaemon:
     def _workaround_library_issues(self, args: list[str]) -> None:
         # load modules that workaround library issues, as needed
         pass
+
+
+session_cache = TTLCache(16, 500)
+
+
+def _pytest_main(config: pytest.Config, session: pytest.Session):
+    """
+    A monkey patched version of _pytest._main that caches test collection
+    """
+    import _pytest.capture
+
+    _pytest.capture.CaptureManager.stop_global_capturing = lambda self: None
+    start_global_capturing = _pytest.capture.CaptureManager.start_global_capturing
+    resume_global_capture = _pytest.capture.CaptureManager.resume_global_capture
+
+    def start_global_capture_if_needed(self: _pytest.capture.CaptureManager):
+        if self._global_capturing is None:
+            start_global_capturing(self)
+        return resume_global_capture(self)
+
+    _pytest.capture.CaptureManager.resume_global_capture = start_global_capture_if_needed
+
+    def best_effort_copy(item, depth_remaining=2):
+        """
+        Copy test items. The items have references to modules and
+        other things that cannot be deep copied.
+        """
+        if depth_remaining <= 0:
+            return item
+        try:
+            item_copy = copy.copy(item)
+        except TypeError:
+            return item
+        # NodeKeywords is an example of an object without a __dict__
+        if hasattr(item, "__dict__"):
+            for k, v in item.__dict__.items():
+                try:
+                    item_copy.__dict__[k] = copy.deepcopy(v)
+                except KeyboardInterrupt:
+                    raise
+                except TypeError:
+                    # Non-pickelable objects
+                    item_copy.__dict__[k] = best_effort_copy(v, depth_remaining - 1)
+        return item_copy
+
+    # here config.args becomes basically the tests to run. Other arguments are omitted
+    # not 100% sure this is always the case
+    session_key = tuple(config.args)
+    try:
+        items = session_cache[session_key]
+    except KeyError:
+        # not in the cache, do test collection
+        start = time.time()
+        config.hook.pytest_collection(session=session)
+        print(f"Pytest Daemon: Collection took {(time.time() - start):0.3f} seconds")
+        session_cache[session_key] = tuple(best_effort_copy(x) for x in session.items)
+    else:
+        print("Pytest Daemon: Using cached collection")
+        # Assign the prior test items (tests to run) and config to the current session
+        session.items = items
+        session.config = config
+        for i in items:
+            # Items have references to the config and the session
+            i.config = config
+            i.session = session
+            if i._request:
+                i._request._pyfuncitem = i
+    config.hook.pytest_runtestloop(session=session)
+
+    if session.testsfailed:
+        return pytest.ExitCode.TESTS_FAILED
+    elif session.testscollected == 0:
+        return pytest.ExitCode.NO_TESTS_COLLECTED
+    return None
