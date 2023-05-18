@@ -222,7 +222,7 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
 
     _pytest.capture.CaptureManager.resume_global_capture = start_global_capture_if_needed
 
-    def best_effort_copy(item, depth_remaining=3):
+    def best_effort_copy(item, depth_remaining=2):
         """
         Copy test items. The items have references to modules and
         other things that cannot be deep copied.
