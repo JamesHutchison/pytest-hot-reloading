@@ -1,24 +1,21 @@
 """
 Pytest Hot Reloading plugin
 """
-import ast
-import fnmatch
-import os
-import re
-import sys
-from typing import Callable
+from __future__ import annotations
 
-import jurigged
-import jurigged.codetools as jurigged_codetools
-from pytest import Config, Item, Session
+import os
+import sys
+from typing import TYPE_CHECKING, Callable
 
 from pytest_hot_reloading.client import PytestClient
-from pytest_hot_reloading.daemon import PytestDaemon
 
 # this is modified by the daemon so that the pytest_collection hooks does not run
 i_am_server = False
 
 seen_paths = set()
+
+if TYPE_CHECKING:
+    from pytest import Config, Item, Session
 
 
 def pytest_addoption(parser) -> None:
@@ -79,56 +76,66 @@ def pytest_cmdline_main(config: Config) -> None:
     return 0  # status code 0
 
 
-def _jurigged_logger(x: str) -> None:
-    """
-    Jurigged behavior is to both print and log.
+def monkey_patch_jurigged_function_definition():
+    import jurigged.codetools as jurigged_codetools
 
-    By default this creates duplicated output.
+    OrigFunctionDefinition = jurigged_codetools.FunctionDefinition
 
-    Pass in a no-op logger to prevent this.
-    """
+    import ast
 
+    class NewFunctionDefinition(OrigFunctionDefinition):
+        def reevaluate(self, new_node, glb):
+            new_node = self.apply_assertion_rewrite(new_node, glb)
+            return super().reevaluate(new_node, glb)
 
-OrigFunctionDefinition = jurigged_codetools.FunctionDefinition
+        def apply_assertion_rewrite(self, ast_func, glb):
+            from _pytest.assertion.rewrite import AssertionRewriter
 
+            nodes: list[ast.AST] = [ast_func]
+            while nodes:
+                node = nodes.pop()
+                for name, field in ast.iter_fields(node):
+                    if isinstance(field, list):
+                        new: list[ast.AST] = []
+                        for i, child in enumerate(field):
+                            if isinstance(child, ast.Assert):
+                                # Transform assert.
+                                new.extend(
+                                    AssertionRewriter(glb["__file__"], None, None).visit(child)
+                                )
+                            else:
+                                new.append(child)
+                                if isinstance(child, ast.AST):
+                                    nodes.append(child)
+                        setattr(node, name, new)
+                    elif (
+                        isinstance(field, ast.AST)
+                        # Don't recurse into expressions as they can't contain
+                        # asserts.
+                        and not isinstance(field, ast.expr)
+                    ):
+                        nodes.append(field)
+            return ast_func
 
-class NewFunctionDefinition(OrigFunctionDefinition):
-    def reevaluate(self, new_node, glb):
-        new_node = self.apply_assertion_rewrite(new_node, glb)
-        return super().reevaluate(new_node, glb)
-
-    def apply_assertion_rewrite(self, ast_func, glb):
-        from _pytest.assertion.rewrite import AssertionRewriter
-
-        nodes: list[ast.AST] = [ast_func]
-        while nodes:
-            node = nodes.pop()
-            for name, field in ast.iter_fields(node):
-                if isinstance(field, list):
-                    new: list[ast.AST] = []
-                    for i, child in enumerate(field):
-                        if isinstance(child, ast.Assert):
-                            # Transform assert.
-                            new.extend(
-                                AssertionRewriter(glb["__file__"], None, None).visit(child)
-                            )
-                        else:
-                            new.append(child)
-                            if isinstance(child, ast.AST):
-                                nodes.append(child)
-                    setattr(node, name, new)
-                elif (
-                    isinstance(field, ast.AST)
-                    # Don't recurse into expressions as they can't contain
-                    # asserts.
-                    and not isinstance(field, ast.expr)
-                ):
-                    nodes.append(field)
-        return ast_func
+    # monkey patch in new definition
+    jurigged_codetools.FunctionDefinition = NewFunctionDefinition
 
 
-# monkey patch in new definition
-jurigged_codetools.FunctionDefinition = NewFunctionDefinition
+def setup_jurigged(config: Config):
+    def _jurigged_logger(x: str) -> None:
+        """
+        Jurigged behavior is to both print and log.
+
+        By default this creates duplicated output.
+
+        Pass in a no-op logger to prevent this.
+        """
+
+    import jurigged
+
+    pattern = _get_pattern_filters(config)
+    # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
+    jurigged.watch(pattern=pattern, logger=_jurigged_logger, poll=True)
 
 
 def _plugin_logic(config: Config) -> None:
@@ -143,9 +150,10 @@ def _plugin_logic(config: Config) -> None:
     if config.option.daemon:
         # pytest prints out "collecting ...". The leading \r prevents that
         print("\rStarting daemon...")
-        pattern = _get_pattern_filters(config)
-        # TODO: intelligently use poll versus watchman
-        jurigged.watch(pattern=pattern, logger=_jurigged_logger, poll=True)
+        setup_jurigged(config)
+
+        from pytest_hot_reloading.daemon import PytestDaemon
+
         daemon = PytestDaemon(daemon_port=daemon_port)
 
         daemon.run_forever()
@@ -185,6 +193,9 @@ def _get_pattern_filters(config: Config) -> str | Callable[[str], bool]:
     acts as a short circuit for paths that have already been seen.
     """
     global seen_paths
+
+    import fnmatch
+    import re
 
     def normalize(glob: str) -> str:
         if glob.startswith("~"):
@@ -226,8 +237,12 @@ def pytest_collection_modifyitems(session: Session, config: Config, items: list[
     This hooks is called by pytest after the collection phase.
 
     This adds tests to the watch list automatically.
+
+    The client should never get this far. This should only be
+    used by the daemon.
     """
     global seen_paths
+    import jurigged
 
     for item in items:
         if item.path and item.path not in seen_paths:
