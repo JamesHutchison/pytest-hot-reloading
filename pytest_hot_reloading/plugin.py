@@ -76,7 +76,7 @@ def pytest_cmdline_main(config: Config) -> None:
         return
     _plugin_logic(config)
     # dont do any more work. Don't let pytest continue
-    return 1
+    return 0  # status code 0
 
 
 def _jurigged_logger(x: str) -> None:
