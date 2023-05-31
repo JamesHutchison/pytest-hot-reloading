@@ -1,4 +1,8 @@
 name: Display tracked time
+on:
+  pull_request:
+    paths:
+      - '.ptyme_track/*'
 jobs:
     track_time:
         uses: JamesHutchison/ptyme-track/.github/workflows/time_tracking.yaml
