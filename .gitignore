@@ -130,3 +130,5 @@ dmypy.json
 
 # pytest daemon pid file
 *.pid
+
+.dev_container_logs/*

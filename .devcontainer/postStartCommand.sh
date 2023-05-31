@@ -2,3 +2,5 @@
 
 # run in the background at startup
 nohup bash .devcontainer/postStartBackground.sh > ".dev_container_logs/postStartBackground.out" &
+
+sleep 1

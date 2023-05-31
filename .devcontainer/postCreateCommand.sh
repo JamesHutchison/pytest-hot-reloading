@@ -13,3 +13,5 @@ poetry config virtualenvs.in-project true
 poetry install --with=dev || true
 
 mkdir -p .dev_container_logs
+
+pip install git+https://github.com/JamesHutchison/ptyme-track
