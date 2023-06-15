@@ -17,6 +17,11 @@ jobs:
     if: github.repository == 'JamesHutchison/pytest-hot-reloading'
     runs-on: ubuntu-latest
     environment: production
+    services:
+      postgres:
+        image: postgres:12.2
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.10
