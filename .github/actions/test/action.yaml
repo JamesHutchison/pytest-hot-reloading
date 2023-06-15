@@ -6,6 +6,7 @@ runs:
   - name: Start postgres for pytest-django test(s)
     run: |
       docker-compose -f tests/workarounds/pytest_django/docker-compose.yml up -d
+    shell: bash
   - name: Install dependencies
     run: |
       poetry install --with=dev
