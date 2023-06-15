@@ -79,6 +79,7 @@ def pytest_cmdline_main(config: Config) -> Optional[int]:
 
 def monkey_patch_jurigged_function_definition():
     import jurigged.codetools as jurigged_codetools  # type: ignore
+    import jurigged.utils as jurigged_utils  # type: ignore
 
     OrigFunctionDefinition = jurigged_codetools.FunctionDefinition
 
@@ -87,7 +88,8 @@ def monkey_patch_jurigged_function_definition():
     class NewFunctionDefinition(OrigFunctionDefinition):
         def reevaluate(self, new_node, glb):
             new_node = self.apply_assertion_rewrite(new_node, glb)
-            return super().reevaluate(new_node, glb)
+            obj = super().reevaluate(new_node, glb)
+            return obj
 
         def apply_assertion_rewrite(self, ast_func, glb):
             from _pytest.assertion.rewrite import AssertionRewriter
@@ -118,6 +120,16 @@ def monkey_patch_jurigged_function_definition():
                         nodes.append(field)
             return ast_func
 
+        def stash(self, lineno=1, col_offset=0):
+            if not isinstance(self.parent, OrigFunctionDefinition):
+                co = self.get_object()
+                if co and (delta := lineno - co.co_firstlineno):
+                    delta -= 1  # fix off-by-one
+                    if delta > 0:
+                        self.recode(jurigged_utils.shift_lineno(co, delta), use_cache=False)
+
+            return super(OrigFunctionDefinition, self).stash(lineno, col_offset)
+
     # monkey patch in new definition
     jurigged_codetools.FunctionDefinition = NewFunctionDefinition
 
@@ -133,6 +145,8 @@ def setup_jurigged(config: Config):
         """
 
     import jurigged
+
+    monkey_patch_jurigged_function_definition()
 
     pattern = _get_pattern_filters(config)
     # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
