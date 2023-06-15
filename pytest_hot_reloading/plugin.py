@@ -72,9 +72,9 @@ def pytest_cmdline_main(config: Config) -> Optional[int]:
         return None
     if i_am_server:
         return None
-    _plugin_logic(config)
+    status_code = _plugin_logic(config)
     # dont do any more work. Don't let pytest continue
-    return 0  # status code 0
+    return status_code  # status code 0
 
 
 def monkey_patch_jurigged_function_definition():
@@ -153,7 +153,7 @@ def setup_jurigged(config: Config):
     jurigged.watch(pattern=pattern, logger=_jurigged_logger, poll=True)
 
 
-def _plugin_logic(config: Config) -> None:
+def _plugin_logic(config: Config) -> int:
     """
     The core plugin logic. This is where it splits based on whether we are the server or client.
 
@@ -172,6 +172,7 @@ def _plugin_logic(config: Config) -> None:
         daemon = PytestDaemon(daemon_port=daemon_port)
 
         daemon.run_forever()
+        raise Exception("Daemon should never exit")
     else:
         pytest_name = config.option.pytest_name
         client = PytestClient(daemon_port=daemon_port, pytest_name=pytest_name)
@@ -191,7 +192,8 @@ def _plugin_logic(config: Config) -> None:
                 "Could not find pytest name in args. "
                 "Check the configured name versus the actual name."
             )
-        client.run(sys.argv[pytest_name_index + 1 :])
+        status_code = client.run(sys.argv[pytest_name_index + 1 :])
+        return status_code
 
 
 def _get_pattern_filters(config: Config) -> str | Callable[[str], bool]:

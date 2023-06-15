@@ -19,7 +19,7 @@ class PytestClient:
         self._daemon_port = daemon_port
         self._pytest_name = pytest_name
 
-    def run(self, args: list[str]) -> None:
+    def run(self, args: list[str]) -> int:
         self._start_daemon_if_needed()
 
         server_url = f"http://{self._daemon_host}:{self._daemon_port}"
@@ -34,6 +34,8 @@ class PytestClient:
 
         print(stdout, file=sys.stdout)
         print(stderr, file=sys.stderr)
+
+        return result["status_code"]
 
     def abort(self) -> None:
         # Close the socket

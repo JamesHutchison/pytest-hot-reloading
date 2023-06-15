@@ -134,7 +134,7 @@ class PytestDaemon:
 
         try:
             # args must omit the calling program
-            pytest.main(["--color=yes"] + args)
+            status_code = pytest.main(["--color=yes"] + args)
         finally:
             self._workaround_library_issues_post(in_progress_workarounds)
 
@@ -154,6 +154,7 @@ class PytestDaemon:
         return {
             "stdout": self._remove_ansi_escape(stdout_str).encode("utf-8"),
             "stderr": self._remove_ansi_escape(stderr_str).encode("utf-8"),
+            "status_code": int(status_code),
         }
 
     def _remove_ansi_escape(self, s: str) -> str:
