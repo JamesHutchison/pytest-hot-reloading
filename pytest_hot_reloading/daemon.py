@@ -5,11 +5,16 @@ import socket
 import subprocess
 import sys
 import time
-from typing import Counter
+from typing import Counter, Generator
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
 from cachetools import TTLCache
+
+from pytest_hot_reloading.workarounds import (
+    run_workarounds_post,
+    run_workarounds_pre,
+)
 
 
 class PytestDaemon:
@@ -100,7 +105,7 @@ class PytestDaemon:
         # run pytest using command line args
         # run the pytest main logic
 
-        self._workaround_library_issues(args)
+        in_progress_workarounds = self._workaround_library_issues_pre()
 
         import pytest_hot_reloading.plugin as plugin
 
@@ -131,6 +136,8 @@ class PytestDaemon:
             # args must omit the calling program
             pytest.main(["--color=yes"] + args)
         finally:
+            self._workaround_library_issues_post(in_progress_workarounds)
+
             # restore originals
             _pytest.main._main = orig_main
 
@@ -152,9 +159,11 @@ class PytestDaemon:
     def _remove_ansi_escape(self, s: str) -> str:
         return re.sub(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))", "", s, flags=re.MULTILINE)
 
-    def _workaround_library_issues(self, args: list[str]) -> None:
-        # load modules that workaround library issues, as needed
-        pass
+    def _workaround_library_issues_pre(self) -> None:
+        return run_workarounds_pre()
+
+    def _workaround_library_issues_post(self, in_progress_workarounds: list[Generator]) -> None:
+        run_workarounds_post(in_progress_workarounds)
 
 
 session_item_cache = TTLCache(16, 500)

@@ -15,3 +15,7 @@ runs:
     run: |
       poetry run pytest
     shell: bash
+  - name: Rerun workaround tests to check for incompatibilities
+    run: |
+      poetry run pytest tests/workarounds
+    shell: bash
