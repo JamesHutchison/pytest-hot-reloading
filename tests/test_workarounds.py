@@ -1,7 +1,7 @@
 from typing import Callable
 
 import pytest  # type: ignore
-from megamock import MegaPatch
+from megamock import MegaPatch  # type: ignore
 
 from pytest_hot_reloading import workarounds
 
