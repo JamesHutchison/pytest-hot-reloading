@@ -12,6 +12,7 @@ The minimum Python version is 3.10
 Do not install in production code. This is exclusively for the developer environment.
 
 pip: Add `pytest-hot-reloading` to your `dev-requirements.txt` file and `pip install -r dev-requirements.txt`
+
 poetry: `poetry add --group=dev pytest-hot-reloading`
 
 ## Usage
