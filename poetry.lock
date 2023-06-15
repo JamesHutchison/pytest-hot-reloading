@@ -611,6 +611,17 @@ files = [
 ]
 
 [[package]]
+name = "types-cachetools"
+version = "5.3.0.5"
+description = "Typing stubs for cachetools"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-cachetools-5.3.0.5.tar.gz", hash = "sha256:67fa46d51a650896770aee0ba80f0e61dc4a7d1373198eec1bc0622263eaa256"},
+    {file = "types_cachetools-5.3.0.5-py3-none-any.whl", hash = "sha256:c0c5fa00199017d974c935bf043c467d5204e4f835141e489b48765b5ac1d960"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.6.3"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -702,4 +713,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "bf31e2f87f547ef09445e766cfb6aec8c4a8c0207a0921d7bc21c42617396633"
+content-hash = "c57a0b4debe77acb57c1d0df28009212dd49c01309e37639af172b75d56c3138"

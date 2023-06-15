@@ -1,9 +1,9 @@
 from typing import Callable, Generator, Optional
 
-workarounds = []
+workarounds: list[Callable[[], Optional[Generator]]] = []
 
 
-def register_workaround(func: Callable[[list[str]], Optional[Generator]]) -> None:
+def register_workaround(func: Callable[[], Optional[Generator]]) -> None:
     """
     Register a workaround. A workaround is a function that takes in
     a list of the arguments passed into pytest. The function may
@@ -14,33 +14,30 @@ def register_workaround(func: Callable[[list[str]], Optional[Generator]]) -> Non
 
 
 @register_workaround
-def xdist_workaround() -> Generator:
+def xdist_workaround() -> None:
     """
     pytest-xdist is not supported. The test collection behaves differently
     and some libraries such as pytest-django may have bugs when its enabled.
     """
     try:
-        pass
+        from xdist import plugin  # type: ignore
     except ImportError:
         return  # not installed
-    from xdist import plugin
 
     # monkey patch to force zero processes
     plugin.parse_numprocesses = lambda s: None
 
 
 @register_workaround
-def pytest_django_tox_workaround() -> Generator:
+def pytest_django_tox_workaround() -> None:
     """
     pytest-django will attempt to add a suffix and they will accumulate with each run.
     Note that running tox with hot reloading doesn't make sense anyways.
     """
     try:
-        import pytest_django  # noqa
+        from pytest_django import fixtures  # type: ignore
     except ImportError:
-        return
-
-    from pytest_django import fixtures
+        return  # not installed
 
     # monkey patch to disable suffix logic used by xdist and tox
     fixtures._set_suffix_to_test_databases = lambda suffix: None

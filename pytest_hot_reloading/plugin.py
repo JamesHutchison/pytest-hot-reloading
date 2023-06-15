@@ -5,14 +5,15 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import TYPE_CHECKING, Callable
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable, Optional
 
 from pytest_hot_reloading.client import PytestClient
 
 # this is modified by the daemon so that the pytest_collection hooks does not run
 i_am_server = False
 
-seen_paths = set()
+seen_paths: set[Path] = set()
 
 if TYPE_CHECKING:
     from pytest import Config, Item, Session
@@ -62,22 +63,22 @@ def pytest_addoption(parser) -> None:
 # https://docs.pytest.org/en/stable/reference.html#_pytest.hookspec.pytest_addhooks
 
 
-def pytest_cmdline_main(config: Config) -> None:
+def pytest_cmdline_main(config: Config) -> Optional[int]:
     """
     This hook is called by pytest and is one of the first hooks.
     """
     # early escapes
     if config.option.collectonly:
-        return
+        return None
     if i_am_server:
-        return
+        return None
     _plugin_logic(config)
     # dont do any more work. Don't let pytest continue
     return 0  # status code 0
 
 
 def monkey_patch_jurigged_function_definition():
-    import jurigged.codetools as jurigged_codetools
+    import jurigged.codetools as jurigged_codetools  # type: ignore
 
     OrigFunctionDefinition = jurigged_codetools.FunctionDefinition
 
@@ -91,12 +92,12 @@ def monkey_patch_jurigged_function_definition():
         def apply_assertion_rewrite(self, ast_func, glb):
             from _pytest.assertion.rewrite import AssertionRewriter
 
-            nodes: list[ast.AST] = [ast_func]
+            nodes: list[ast.AST] = [ast_func]  # type: ignore
             while nodes:
                 node = nodes.pop()
                 for name, field in ast.iter_fields(node):
                     if isinstance(field, list):
-                        new: list[ast.AST] = []
+                        new: list[ast.AST] = []  # type: ignore
                         for i, child in enumerate(field):
                             if isinstance(child, ast.Assert):
                                 # Transform assert.
@@ -218,10 +219,10 @@ def _get_pattern_filters(config: Config) -> str | Callable[[str], bool]:
     else:
         ignore_regex_matches = []
 
-    def matcher(filename) -> bool:
+    def matcher(filename: str) -> bool:
         if filename in seen_paths:
             return False
-        seen_paths.add(filename)
+        seen_paths.add(Path(filename))
         if any(regex_match(filename) for regex_match in regex_matches):
             if not any(
                 ignore_regex_match(filename) for ignore_regex_match in ignore_regex_matches

@@ -3,7 +3,7 @@ import socket
 import xmlrpc.client
 
 import pytest
-from megamock import Mega, MegaMock, MegaPatch
+from megamock import Mega, MegaMock, MegaPatch  # type: ignore
 
 from pytest_hot_reloading.client import PytestClient
 

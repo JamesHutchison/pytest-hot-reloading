@@ -85,7 +85,7 @@ class PytestDaemon:
         self._write_pid_file()
 
         # register the 'run_pytest' function
-        server.register_function(self.run_pytest, "run_pytest")
+        server.register_function(self.run_pytest, "run_pytest")  # type: ignore
 
         server.serve_forever()
 
@@ -159,17 +159,17 @@ class PytestDaemon:
     def _remove_ansi_escape(self, s: str) -> str:
         return re.sub(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))", "", s, flags=re.MULTILINE)
 
-    def _workaround_library_issues_pre(self) -> None:
+    def _workaround_library_issues_pre(self) -> list[Generator]:
         return run_workarounds_pre()
 
     def _workaround_library_issues_post(self, in_progress_workarounds: list[Generator]) -> None:
         run_workarounds_post(in_progress_workarounds)
 
 
-session_item_cache = TTLCache(16, 500)
+session_item_cache: TTLCache[tuple, tuple] = TTLCache(16, 500)
 # hack: keeping a session cache since pytest has session references
 #       littered everywhere on objects
-prior_sessions = set()
+prior_sessions: set[pytest.Session] = set()
 
 
 def _manage_prior_session_garbage(session: pytest.Session) -> None:
@@ -218,7 +218,7 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
 
     import _pytest.capture
 
-    _pytest.capture.CaptureManager.stop_global_capturing = lambda self: None
+    _pytest.capture.CaptureManager.stop_global_capturing = lambda self: None  # type: ignore
     start_global_capturing = _pytest.capture.CaptureManager.start_global_capturing
     resume_global_capture = _pytest.capture.CaptureManager.resume_global_capture
 
@@ -227,7 +227,7 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
             start_global_capturing(self)
         return resume_global_capture(self)
 
-    _pytest.capture.CaptureManager.resume_global_capture = start_global_capture_if_needed
+    _pytest.capture.CaptureManager.resume_global_capture = start_global_capture_if_needed  # type: ignore
 
     def best_effort_copy(item, depth_remaining=2):
         """
@@ -266,7 +266,7 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
     else:
         print("Pytest Daemon: Using cached collection")
         # Assign the prior test items (tests to run) and config to the current session
-        session.items = items
+        session.items = items  # type: ignore
         session.config = config
         for i in items:
             # Items have references to the config and the session
