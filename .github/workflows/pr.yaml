@@ -26,3 +26,7 @@ jobs:
       uses: Gr1N/setup-poetry@12c727a3dcf8c1a548d8d041c9d5ef5cebb3ba2e
     - name: test
       uses: ./.github/actions/test
+    - name: lint using ruff
+      run: poetry run ruff pytest_hot_reloading tests
+    - name: lint using mypy
+      run: poetry run mypy pytest_hot_reloading tests
