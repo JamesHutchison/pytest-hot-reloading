@@ -3,6 +3,9 @@ description: Install dependencies and run tests
 runs:
   using: composite
   steps:
+  - name: Start postgres for pytest-django test(s)
+    run: |
+      docker-compose -f tests/workarounds/pytest_django/docker-compose.yml up -d
   - name: Install dependencies
     run: |
       poetry install --with=dev
