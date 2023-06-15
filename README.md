@@ -6,6 +6,8 @@ This uses the [jurigged](https://github.com/breuleux/jurigged) library to watch 
 If it takes less than 5 seconds to do all of the imports
 necessary to run a unit test, then you probably don't need this.
 
+The minimum Python version is 3.10
+
 ## Installation
 Do not install in production code. This is exclusively for the developer environment.
 
