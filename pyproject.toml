@@ -1,12 +1,12 @@
 [tool.ruff]
-line-length = 98
+line-length = 120
 
 [tool.black]
 line-length = 98
 
 [tool.poetry]
 name = "pytest-hot-reloading"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 description = ""
 authors = ["James Hutchison <jamesghutchison@proton.me>"]
 readme = "README.md"
@@ -16,6 +16,7 @@ packages = [{ include = "pytest_hot_reloading" }]
 python = "^3.10"
 jurigged = "^0.5.5"
 cachetools = "^5.3.0"
+types-cachetools = "^5.3.0.5"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.2.0"
@@ -23,10 +24,19 @@ ruff = "^0.0.261"
 black = "^23.3.0"
 pytest = "^7.2.2"
 megamock = "^0.1.0b3"
+pytest-django = "^4.5.2"
+django = "^4.2.2"
+psycopg2-binary = "^2.9.6"
+pytest-env = "^0.8.1"
+pytest-xdist = "^3.3.1"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "-p pytest_hot_reloading.plugin -p megamock.plugins.pytest"
+DJANGO_SETTINGS_MODULE = "tests.workarounds.pytest_django.settings"
+# xdist is not supported. Enable it to check that workaround works
+addopts = "-n 1 -p pytest_hot_reloading.plugin -p megamock.plugins.pytest"
+# TOX is incompatible with pytest-django
+env = ["TOX_PARALLEL_ENV = tox"]

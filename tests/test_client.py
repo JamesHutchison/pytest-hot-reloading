@@ -3,7 +3,7 @@ import socket
 import xmlrpc.client
 
 import pytest
-from megamock import Mega, MegaMock, MegaPatch
+from megamock import Mega, MegaMock, MegaPatch  # type: ignore
 
 from pytest_hot_reloading.client import PytestClient
 
@@ -21,17 +21,19 @@ class TestPytestClient:
             return_value={
                 "stdout": xmlrpc.client.Binary("stdout".encode("utf-8")),
                 "stderr": xmlrpc.client.Binary("stderr".encode("utf-8")),
+                "status_code": 1,
             }
         )
         client = PytestClient()
         args = ["foo", "bar"]
 
-        client.run(args)
+        status_code = client.run(args)
 
         out, err = capsys.readouterr()
 
         assert re.match(r"Daemon took \S+ seconds to reply\nstdout\n", out)
         assert err == "stderr\n"
+        assert status_code == 1
 
     def test_aborting_should_close_the_socket(self) -> None:
         mock = MegaMock.it(PytestClient)

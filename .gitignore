@@ -132,3 +132,6 @@ dmypy.json
 *.pid
 
 .dev_container_logs/*
+
+# ptyme server secret
+.ptyme.secret

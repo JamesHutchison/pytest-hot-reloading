@@ -2,6 +2,7 @@ import socket
 import sys
 import time
 import xmlrpc.client
+from typing import cast
 
 
 class PytestClient:
@@ -18,14 +19,14 @@ class PytestClient:
         self._daemon_port = daemon_port
         self._pytest_name = pytest_name
 
-    def run(self, args: list[str]) -> str:
+    def run(self, args: list[str]) -> int:
         self._start_daemon_if_needed()
 
         server_url = f"http://{self._daemon_host}:{self._daemon_port}"
         server = xmlrpc.client.ServerProxy(server_url)
 
         start = time.time()
-        result = server.run_pytest(args)
+        result: dict = cast(dict, server.run_pytest(args))
         print(f"Daemon took {(time.time() - start):.3f} seconds to reply")
 
         stdout = result["stdout"].data.decode("utf-8")
@@ -33,6 +34,8 @@ class PytestClient:
 
         print(stdout, file=sys.stdout)
         print(stderr, file=sys.stderr)
+
+        return result["status_code"]
 
     def abort(self) -> None:
         # Close the socket
