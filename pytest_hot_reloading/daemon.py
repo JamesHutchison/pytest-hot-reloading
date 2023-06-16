@@ -5,6 +5,7 @@ import socket
 import subprocess
 import sys
 import time
+from threading import Thread
 from typing import Counter, Generator
 from xmlrpc.server import SimpleXMLRPCServer
 
@@ -21,6 +22,7 @@ class PytestDaemon:
     def __init__(self, daemon_host: str = "localhost", daemon_port: int = 4852) -> None:
         self._daemon_host = daemon_host
         self._daemon_port = daemon_port
+        self._server: SimpleXMLRPCServer | None = None
 
     @property
     def pid_file(self) -> str:
@@ -57,6 +59,14 @@ class PytestDaemon:
             raise NotImplementedError("Only localhost is supported for now")
         PytestDaemon.wait_to_be_ready(host, port)
 
+    def stop(self) -> dict:
+        if self._server:
+            t = Thread(target=self._server.shutdown, daemon=True)
+            t.start()
+            self._delete_pid_file()
+
+        return {"shutdown": "ok"}
+
     @staticmethod
     def wait_to_be_ready(host: str = "localhost", port: int = 4852) -> None:
         # poll the connection to the daemon using sockets
@@ -86,12 +96,18 @@ class PytestDaemon:
 
         # register the 'run_pytest' function
         server.register_function(self.run_pytest, "run_pytest")  # type: ignore
+        server.register_function(self.stop, "stop")
 
+        self._server = server
         server.serve_forever()
 
     def _write_pid_file(self) -> None:
         with open(self.pid_file, "w") as f:
             f.write(str(os.getpid()))
+
+    def _delete_pid_file(self) -> None:
+        if os.path.exists(self.pid_file):
+            os.unlink(self.pid_file)
 
     def _kill_existing_daemon(self) -> None:
         try:

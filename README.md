@@ -60,6 +60,8 @@ If the daemon is already running and you run pytest with `--daemon`, then the ol
 and a new one will be started. Note that `pytest --daemon` is NOT how you run tests. It is only used to start
 the daemon.
 
+The daemon can be stopped with `pytest --stop-daemon`. This can be used if it gets into a bad state.
+
 ## Workarounds
 Libraries that use mutated globals may need a workaround to work with this plugin. The preferred
 route is to have the library update its code to not mutate globals in a test environment, or to
