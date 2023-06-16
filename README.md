@@ -38,6 +38,9 @@ Note that a pid file is created to track the pid.
 Imports are not reran on subsequent runs, which can be a huge time saver.
 
 Currently, if you want to debug, you will want to run the daemon manually with debugging.
+
+![Debugging demo](docs/hot-reloading-debug.gif)
+
 This can easily be done in VS Code with the following launch profile:
 
 ```json
