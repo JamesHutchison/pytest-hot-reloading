@@ -1,4 +1,6 @@
 # A PyTest Hot Reloading Plugin
+![versions](https://img.shields.io/pypi/pyversions/pytest-hot-reloading)
+
 A hot reloading pytest daemon, implemented as a plugin.
 
 This uses the [jurigged](https://github.com/breuleux/jurigged) library to watch files.
