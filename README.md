@@ -4,9 +4,18 @@ A hot reloading pytest daemon, implemented as a plugin.
 This uses the [jurigged](https://github.com/breuleux/jurigged) library to watch files.
 
 If it takes less than 5 seconds to do all of the imports
-necessary to run a unit test, then you probably don't need this.
+necessary to run a unit test, then you probably don't need this. If you use Django,
+you'll probably love this.
 
 The minimum Python version is 3.10
+
+## Demo
+
+### With hot reloading
+![Hot reloading demo](docs/hot-reloading-demo.gif)
+
+### Without hot reloading
+![Not hot reloading demo](docs/not-hot-reloading-demo.gif)
 
 ## Installation
 Do not install in production code. This is exclusively for the developer environment.
@@ -14,6 +23,7 @@ Do not install in production code. This is exclusively for the developer environ
 pip: Add `pytest-hot-reloading` to your `dev-requirements.txt` file and `pip install -r dev-requirements.txt`
 
 poetry: `poetry add --group=dev pytest-hot-reloading`
+
 
 ## Usage
 Add the plugin to the pytest arguments. Example using pyproject.toml:
