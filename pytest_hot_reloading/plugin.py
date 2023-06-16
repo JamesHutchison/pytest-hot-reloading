@@ -25,7 +25,7 @@ def pytest_addoption(parser) -> None:
         "--daemon",
         action="store_true",
         default=False,
-        help="Start the daemon",
+        help="Start the daemon. If it is already running, the old instance will stop.",
     )
     group.addoption(
         "--daemon-port",
@@ -56,6 +56,12 @@ def pytest_addoption(parser) -> None:
         action="store",
         default="./.venv/*",
         help="The globs to ignore for changes. This is a colon separated list of globs.",
+    )
+    group.addoption(
+        "--stop-daemon",
+        action="store_true",
+        default=False,
+        help="Stop the daemon",
     )
 
 
@@ -172,10 +178,15 @@ def _plugin_logic(config: Config) -> int:
         daemon = PytestDaemon(daemon_port=daemon_port)
 
         daemon.run_forever()
-        raise Exception("Daemon should never exit")
+        sys.exit(0)
     else:
         pytest_name = config.option.pytest_name
         client = PytestClient(daemon_port=daemon_port, pytest_name=pytest_name)
+
+        if config.option.stop_daemon:
+            client.stop()
+            return 0
+
         # find the index of the first value that is not None
         for idx, val in enumerate(
             [

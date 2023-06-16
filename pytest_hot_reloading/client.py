@@ -19,11 +19,16 @@ class PytestClient:
         self._daemon_port = daemon_port
         self._pytest_name = pytest_name
 
+    def _get_server(self) -> xmlrpc.client.ServerProxy:
+        server_url = f"http://{self._daemon_host}:{self._daemon_port}"
+        server = xmlrpc.client.ServerProxy(server_url)
+
+        return server
+
     def run(self, args: list[str]) -> int:
         self._start_daemon_if_needed()
 
-        server_url = f"http://{self._daemon_host}:{self._daemon_port}"
-        server = xmlrpc.client.ServerProxy(server_url)
+        server = self._get_server()
 
         start = time.time()
         result: dict = cast(dict, server.run_pytest(args))
@@ -36,6 +41,19 @@ class PytestClient:
         print(stderr, file=sys.stderr)
 
         return result["status_code"]
+
+    def stop(self) -> None:
+        """
+        Stop the daemon
+        """
+        server = self._get_server()
+
+        try:
+            server.stop()
+        except OSError:
+            print("Daemon is not running")
+        else:
+            print("Daemon stopped")
 
     def abort(self) -> None:
         # Close the socket
