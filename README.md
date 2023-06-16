@@ -62,6 +62,24 @@ the daemon.
 
 The daemon can be stopped with `pytest --stop-daemon`. This can be used if it gets into a bad state.
 
+## Arguments and Env Variables
+- `PYTEST_DAEMON_PORT`
+    - The port the daemon listens on.
+    - Default: `4852`.
+    - Command line: `--daemon-port`
+- `PYTEST_DAEMON_PYTEST_NAME`
+    - The name of the pytest executable.
+    - Default: `pytest`.
+    - Command line: `--pytest-name`
+- `PYTEST_DAEMON_WATCH_GLOBS`
+    - The colon separated globs to watch.
+    - Default: `./**/*.py`.
+    - Command line: `--daemon-watch-globs`
+- `PYTEST_DAEMON_IGNORE_WATCH_GLOBS`
+    - The colon separated globs to ignore.
+    - Default: `./.venv/*`.
+    - Command line: `--daemon-ignore-watch-globs`
+
 ## Workarounds
 Libraries that use mutated globals may need a workaround to work with this plugin. The preferred
 route is to have the library update its code to not mutate globals in a test environment, or to
