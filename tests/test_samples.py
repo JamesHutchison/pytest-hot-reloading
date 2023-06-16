@@ -1,7 +1,7 @@
 import time
 from functools import lru_cache
 
-from megamock import MegaMock, MegaPatch  # type: ignore
+from megamock import MegaMock, MegaPatch
 
 
 @lru_cache()
