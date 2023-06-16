@@ -4,7 +4,9 @@ import re
 import socket
 import subprocess
 import sys
+import tempfile
 import time
+from pathlib import Path
 from threading import Thread
 from typing import Counter, Generator
 from xmlrpc.server import SimpleXMLRPCServer
@@ -25,8 +27,8 @@ class PytestDaemon:
         self._server: SimpleXMLRPCServer | None = None
 
     @property
-    def pid_file(self) -> str:
-        return f".pytest_hot_reloading_{self._daemon_port}.pid"
+    def pid_file(self) -> Path:
+        return Path(tempfile.gettempdir()) / f".pytest_hot_reloading_{self._daemon_port}.pid"
 
     @staticmethod
     def start(
