@@ -30,31 +30,31 @@ def pytest_addoption(parser) -> None:
     group.addoption(
         "--daemon-port",
         action="store",
-        default=4852,
+        default=int(os.getenv("PYTEST_DAEMON_PORT", "4852")),
         help="The port to use for the daemon. You generally shouldn't need to set this.",
     )
     group.addoption(
         "--pytest-name",
         action="store",
-        default="pytest",
+        default=os.getenv("PYTEST_DAEMON_PYTEST_NAME", "pytest"),
         help="The name of the pytest executable or module",
     )
     group.addoption(
         "--daemon-timeout",
         action="store",
-        default=(5 * 60),
-        help="The timeout in seconds to wait on a test suite to finish",
+        default=os.getenv("PYTEST_DAEMON_TIMEOUT", (5 * 60)),
+        help="The timeout in seconds to wait on a test suite to finish. This is not yet implemented.",
     )
     group.addoption(
         "--daemon-watch-globs",
         action="store",
-        default="./*.py",
+        default=os.getenv("PYTEST_DAEMON_WATCH_GLOBS", "./*.py"),
         help="The globs to watch for changes. This is a colon separated list of globs.",
     )
     group.addoption(
         "--daemon-ignore-watch-globs",
         action="store",
-        default="./.venv/*",
+        default=os.getenv("PYTEST_DAEMON_IGNORE_WATCH_GLOBS", "./.venv/*"),
         help="The globs to ignore for changes. This is a colon separated list of globs.",
     )
     group.addoption(
