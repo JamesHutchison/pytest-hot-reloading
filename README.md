@@ -14,6 +14,8 @@ The minimum Python version is 3.10
 ## Demo
 
 ### With hot reloading
+Slower initial start time but faster subsequent runs
+
 ![Hot reloading demo](docs/hot-reloading-demo.gif)
 
 ### Without hot reloading
