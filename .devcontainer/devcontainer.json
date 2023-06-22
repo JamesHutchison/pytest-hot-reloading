@@ -67,7 +67,10 @@
         "ghcr.io/devcontainers-contrib/features/poetry:2": {
             "version": "latest"
         },
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+        "ghcr.io/devcontainers/features/sshd:1": {
+            "version": "latest"
+        }
     },
     // mount the .venv directory as a named volume for performance reasons
     "mounts": [
