@@ -151,8 +151,6 @@ the given module will not be executed.
 - This is early alpha
 - The jurigged library is not perfect and sometimes it gets in a bad state
 - Some libraries were not written with hot reloading in mind, and will not work without some changes.
-  There is going to be logic to work around other issues with other libraries, such as pytest-django's
-  mutation of the settings module that runs every session, but it hasn't been implemented yet.
 
 ## Notes
 - pytest-xdist will have its logic disabled, even if args are passed in to enable it
