@@ -16,3 +16,5 @@ mkdir -p .dev_container_logs
 echo "*" > .dev_container_logs/.gitignore
 
 pip install git+https://github.com/JamesHutchison/ptyme-track
+
+ptyme-track --ensure-secret
