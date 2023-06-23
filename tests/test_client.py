@@ -1,3 +1,4 @@
+import os
 import re
 import socket
 import xmlrpc.client
@@ -27,7 +28,7 @@ class TestPytestClient:
         client = PytestClient()
         args = ["foo", "bar"]
 
-        status_code = client.run(args)
+        status_code = client.run(os.getcwd(), args)
 
         out, err = capsys.readouterr()
 

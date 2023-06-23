@@ -198,12 +198,16 @@ def _plugin_logic(config: Config) -> int:
                 pytest_name_index = idx
                 break
         else:
-            print(sys.argv)
-            raise Exception(
-                "Could not find pytest name in args. "
-                "Check the configured name versus the actual name."
-            )
-        status_code = client.run(sys.argv[pytest_name_index + 1 :])
+            if "pytest_runner" in sys.argv[0]:
+                pytest_name_index = 0
+            else:
+                print(sys.argv)
+                raise Exception(
+                    "Could not find pytest name in args. "
+                    "Check the configured name versus the actual name."
+                )
+        cwd = os.getcwd()
+        status_code = client.run(cwd, sys.argv[pytest_name_index + 1 :])
         return status_code
 
 

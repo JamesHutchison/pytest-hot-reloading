@@ -1,17 +1,31 @@
 # A PyTest Hot Reloading Plugin
+![versions](https://img.shields.io/pypi/pyversions/pytest-hot-reloading)
+
 A hot reloading pytest daemon, implemented as a plugin.
 
-This uses the [jurigged](https://github.com/breuleux/jurigged) library to watch files.
+## Features
+- Uses the [jurigged](https://github.com/breuleux/jurigged) library to watch and hot reload files
+- Caches test discovery in many situations
+- Improved performance by not having to import libraries again and again and skipping initializtion logic
+- System for registering workarounds in case something doesn't work out of the box
+
+## Trade-offs
+- First run is slower
+- May not work with some libraries
+- Sometimes gets in a bad state and needs to be restarted
 
 If it takes less than 5 seconds to do all of the imports
-necessary to run a unit test, then you probably don't need this. If you use Django,
-you'll probably love this.
+necessary to run a unit test, then you probably don't need this.
+
+If you're using Django, recommended to use `--keep-db` to preserve the test database.
 
 The minimum Python version is 3.10
 
 ## Demo
 
 ### With hot reloading
+Slower initial start time but faster subsequent runs
+
 ![Hot reloading demo](docs/hot-reloading-demo.gif)
 
 ### Without hot reloading
@@ -20,13 +34,15 @@ The minimum Python version is 3.10
 ## Installation
 Do not install in production code. This is exclusively for the developer environment.
 
-pip: Add `pytest-hot-reloading` to your `dev-requirements.txt` file and `pip install -r dev-requirements.txt`
+**pip**: Add `pytest-hot-reloading` to your `dev-requirements.txt` file and `pip install -r dev-requirements.txt`
 
-poetry: `poetry add --group=dev pytest-hot-reloading`
+**poetry**: `poetry add --group=dev pytest-hot-reloading`
 
 
 ## Usage
-Add the plugin to the pytest arguments. Example using pyproject.toml:
+Add the plugin to the pytest arguments.
+
+Example using pyproject.toml:
 ```toml
 [tool.pytest.ini_options]
 addopts = "-p pytest_hot_reloading.plugin"
@@ -35,9 +51,23 @@ addopts = "-p pytest_hot_reloading.plugin"
 When running pytest, the plugin will detect whether the daemon is running, and start it if is not.
 Note that a pid file is created to track the pid.
 
-Imports are not reran on subsequent runs, which can be a huge time saver.
+Imports and in many cases initialization logic are not reran on subsequent runs, which can be a huge time saver.
 
 Currently, if you want to debug, you will want to run the daemon manually with debugging.
+
+### JetBrains (IDEA, PyCharm, etc)
+
+Create a REGULAR Python run configuration, with pytest as the *module*. For parameters, add `--daemon`. Strongly consider storing
+in the project so it is shared with other developers.
+
+![JetBrains Example](docs/jetbrains-hot-reloading-example.png)
+
+For more information on parameters, see the VS Code section below.
+
+### VS Code
+
+![Debugging demo](docs/hot-reloading-debug.gif)
+
 This can easily be done in VS Code with the following launch profile:
 
 ```json
@@ -121,8 +151,6 @@ the given module will not be executed.
 - This is early alpha
 - The jurigged library is not perfect and sometimes it gets in a bad state
 - Some libraries were not written with hot reloading in mind, and will not work without some changes.
-  There is going to be logic to work around other issues with other libraries, such as pytest-django's
-  mutation of the settings module that runs every session, but it hasn't been implemented yet.
 
 ## Notes
 - pytest-xdist will have its logic disabled, even if args are passed in to enable it

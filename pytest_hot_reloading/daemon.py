@@ -119,7 +119,7 @@ class PytestDaemon:
         except FileNotFoundError:
             raise Exception(f"Port {self._daemon_port} is already in use")
 
-    def run_pytest(self, args: list[str]) -> dict:
+    def run_pytest(self, cwd: str, args: list[str]) -> dict:
         # run pytest using command line args
         # run the pytest main logic
 
@@ -150,10 +150,15 @@ class PytestDaemon:
         orig_main = _pytest.main._main
         _pytest.main._main = _pytest_main
 
+        # store current working directory
+        prev_cwd = os.getcwd()
+        os.chdir(cwd)
+
         try:
             # args must omit the calling program
             status_code = pytest.main(["--color=yes"] + args)
         finally:
+            os.chdir(prev_cwd)
             self._workaround_library_issues_post(in_progress_workarounds)
 
             # restore originals

@@ -25,13 +25,13 @@ class PytestClient:
 
         return server
 
-    def run(self, args: list[str]) -> int:
+    def run(self, cwd: str, args: list[str]) -> int:
         self._start_daemon_if_needed()
 
         server = self._get_server()
 
         start = time.time()
-        result: dict = cast(dict, server.run_pytest(args))
+        result: dict = cast(dict, server.run_pytest(cwd, args))
         print(f"Daemon took {(time.time() - start):.3f} seconds to reply")
 
         stdout = result["stdout"].data.decode("utf-8")
