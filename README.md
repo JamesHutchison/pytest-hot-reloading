@@ -6,7 +6,7 @@ A hot reloading pytest daemon, implemented as a plugin.
 ## Features
 - Uses the [jurigged](https://github.com/breuleux/jurigged) library to watch and hot reload files
 - Caches test discovery in many situations
-- Improved performance by keeping things in ram
+- Improved performance by not having to import libraries again and again and skipping initializtion logic
 - System for registering workarounds in case something doesn't work out of the box
 
 ## Trade-offs
