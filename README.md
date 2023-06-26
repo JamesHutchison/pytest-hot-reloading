@@ -58,7 +58,8 @@ Currently, if you want to debug, you will want to run the daemon manually with d
 ### JetBrains (IDEA, PyCharm, etc)
 
 Create a REGULAR Python run configuration, with pytest as the *module*. For parameters, add `--daemon`. Strongly consider storing
-in the project so it is shared with other developers.
+in the project so it is shared with other developers. Note that you most likely also need to set the working directory to the
+project root where the pytest configuration is located so that it knows to use the plugin you configured earlier.
 
 ![JetBrains Example](docs/jetbrains-hot-reloading-example.png)
 
