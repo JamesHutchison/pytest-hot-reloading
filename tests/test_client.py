@@ -2,6 +2,7 @@ import os
 import re
 import socket
 import xmlrpc.client
+from pathlib import Path
 
 import pytest
 from megamock import Mega, MegaMock, MegaPatch
@@ -28,7 +29,7 @@ class TestPytestClient:
         client = PytestClient()
         args = ["foo", "bar"]
 
-        status_code = client.run(os.getcwd(), args)
+        status_code = client.run(Path(os.getcwd()), args)
 
         out, err = capsys.readouterr()
 

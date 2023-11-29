@@ -37,7 +37,9 @@ class PytestClient:
         if self._will_start_daemon_if_needed:
             self._start_daemon_if_needed()
         elif not self._daemon_running():
-            raise Exception("Daemon is not running and must be started, or add --start-daemon-if-needed")
+            raise Exception(
+                "Daemon is not running and must be started, or add --start-daemon-if-needed"
+            )
 
         server = self._get_server()
 
@@ -97,4 +99,6 @@ class PytestClient:
         from pytest_hot_reloading.daemon import PytestDaemon
 
         # start the daemon
-        PytestDaemon.start(host=self._daemon_host, port=self._daemon_port, pytest_name=self._pytest_name)
+        PytestDaemon.start(
+            host=self._daemon_host, port=self._daemon_port, pytest_name=self._pytest_name
+        )

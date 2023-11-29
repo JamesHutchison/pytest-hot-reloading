@@ -203,7 +203,7 @@ def _plugin_logic(config: Config) -> int:
             return 0
 
         cwd = config.invocation_params.dir
-        args = config.invocation_params.args
+        args = list(config.invocation_params.args)
 
         status_code = client.run(cwd, args)
         return status_code

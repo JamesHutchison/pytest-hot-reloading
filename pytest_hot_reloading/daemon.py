@@ -9,7 +9,7 @@ import tempfile
 import time
 from pathlib import Path
 from threading import Thread
-from typing import Counter, Generator
+from typing import Any, Counter, Generator
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
@@ -54,6 +54,7 @@ class PytestDaemon:
             if ignore_watch_globs:
                 args += ["--daemon-ignore-watch-globs", ignore_watch_globs]
             # if not windows
+            additional_args: dict[str, Any]
             if not os.name == "nt":
                 additional_args = {"start_new_session": True}
             else:
