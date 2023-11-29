@@ -1,4 +1,5 @@
 import copy
+import json
 import os
 import re
 import socket
@@ -52,10 +53,16 @@ class PytestDaemon:
                 args += ["--daemon-watch-globs", watch_globs]
             if ignore_watch_globs:
                 args += ["--daemon-ignore-watch-globs", ignore_watch_globs]
+            # if not windows
+            if not os.name == "nt":
+                additional_args = {"start_new_session": True}
+            else:
+                additional_args = {}
             subprocess.Popen(
                 args,
                 env=os.environ,
                 cwd=os.getcwd(),
+                **additional_args,
             )
         else:
             raise NotImplementedError("Only localhost is supported for now")
@@ -73,7 +80,7 @@ class PytestDaemon:
     def wait_to_be_ready(host: str = "localhost", port: int = 4852) -> None:
         # poll the connection to the daemon using sockets
         # and return when it is ready
-        for _ in range(100):
+        for _ in range(1000):
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((host, port))
@@ -119,7 +126,7 @@ class PytestDaemon:
         except FileNotFoundError:
             raise Exception(f"Port {self._daemon_port} is already in use")
 
-    def run_pytest(self, cwd: str, args: list[str]) -> dict:
+    def run_pytest(self, cwd: str, env_json: str, sys_path: list[str], args: list[str]) -> dict:
         # run pytest using command line args
         # run the pytest main logic
 
@@ -152,7 +159,19 @@ class PytestDaemon:
 
         # store current working directory
         prev_cwd = os.getcwd()
+        # switch to client working directory
         os.chdir(cwd)
+
+        # copy the environment
+        env_old = os.environ.copy()
+        # switch to client environment
+        new_env = json.loads(env_json)
+        os.environ.update(new_env)
+
+        # copy sys.path
+        sys_path_old = sys.path
+        # switch to client path
+        sys.path = sys_path
 
         try:
             # args must omit the calling program
@@ -160,6 +179,12 @@ class PytestDaemon:
         finally:
             os.chdir(prev_cwd)
             self._workaround_library_issues_post(in_progress_workarounds)
+
+            # restore sys.path
+            sys.path = sys_path_old
+
+            # restore environment
+            os.environ.update(env_old)
 
             # restore originals
             _pytest.main._main = orig_main
