@@ -26,21 +26,11 @@
                 "mhutchie.git-graph",
                 "eamodio.gitlens",
                 "charliermarsh.ruff",
-                "ms-azuretools.vscode-docker"
+                "ms-azuretools.vscode-docker",
+                "matangover.mypy"
             ],
             "settings": {
                 "python.defaultInterpreterPath": "/workspaces/pytest-hot-reloading/.venv/bin/python",
-                "python.formatting.provider": "black",
-                "python.linting.mypyEnabled": true,
-                "python.linting.mypyPath": "dmypy",
-                "python.linting.mypyArgs": [
-                    "run --",
-                    "--ignore-missing-imports",
-                    "--show-column-numbers",
-                    "--no-pretty",
-                    "--python-executable",
-                    "/workspaces/pytest-hot-reloading/.venv/bin/python"
-                ],
                 "python.testing.pytestArgs": [
                     "tests"
                 ],
@@ -55,7 +45,17 @@
                 "autoDocstring.customTemplatePath": ".vscode/autodocstring.mustache",
                 "ruff.path": [
                     "/workspaces/pytest-hot-reloading/.venv/bin/ruff"
-                ]
+                ],
+                // use legacy test adapter
+                // "python.experiments.optOutFrom": [
+                //     "pythonTestAdapter"
+                // ],
+                "[python]": {
+                    "editor.defaultFormatter": "charliermarsh.ruff",
+                    "editor.codeActionsOnSave": {
+                        "source.organizeImports.ruff": true
+                    }
+                }
             },
             "git.branchProtection": [
                 "main",
