@@ -48,7 +48,13 @@ Example using pyproject.toml:
 addopts = "-p pytest_hot_reloading.plugin"
 ```
 
-When running pytest, the plugin will detect whether the daemon is running, and start it if is not.
+When running pytest, the plugin will detect whether the daemon is running.
+If the daemon is not running, it will error unless the `--daemon-start-if-needed` argument is passed.
+
+The current version of the VS Code Python extension is not, by default, compatible with automatically starting the daemon. The
+test runner will hang. However, you can revert to legacy behavior which will allow for using the automatic starting. 
+See the VS Code section below for more information.
+
 Note that a pid file is created to track the pid.
 
 Imports and in many cases initialization logic are not reran on subsequent runs, which can be a huge time saver.
@@ -102,6 +108,23 @@ and a new one will be started. Note that `pytest --daemon` is NOT how you run te
 the daemon.
 
 The daemon can be stopped with `pytest --stop-daemon`. This can be used if it gets into a bad state.
+
+To enable automatically starting the server, you have to, currently, disable the new Python Test Adapter:
+
+In your devcontainer.json or user settings:
+```json
+"python.experiments.optOutFrom": [
+    "pythonTestAdapter"
+],
+```
+
+Then enable automatically starting the daemon in your settings:
+```json
+"python.testing.pytestArgs": [
+    "--daemon-start-if-needed",
+    "tests"
+],
+```
 
 ## Arguments and Env Variables
 - `PYTEST_DAEMON_PORT`
