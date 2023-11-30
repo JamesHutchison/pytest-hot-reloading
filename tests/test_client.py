@@ -2,6 +2,7 @@ import os
 import re
 import socket
 import xmlrpc.client
+from pathlib import Path
 
 import pytest
 from megamock import Mega, MegaMock, MegaPatch
@@ -28,13 +29,25 @@ class TestPytestClient:
         client = PytestClient()
         args = ["foo", "bar"]
 
-        status_code = client.run(os.getcwd(), args)
+        status_code = client.run(Path(os.getcwd()), args)
 
         out, err = capsys.readouterr()
 
         assert re.match(r"Daemon took \S+ seconds to reply\nstdout\n", out)
         assert err == "stderr\n"
         assert status_code == 1
+
+    def test_when_sever_not_avaiable_then_raises_error(self) -> None:
+        client = PytestClient(start_daemon_if_needed=False)
+        MegaPatch.it(PytestClient._daemon_running, return_value=False)
+
+        with pytest.raises(Exception) as exc:
+            client.run(Path(), ["args"])
+
+        assert (
+            str(exc.value)
+            == "Daemon is not running and must be started, or add --daemon-start-if-needed"
+        )
 
     def test_aborting_should_close_the_socket(self) -> None:
         mock = MegaMock.it(PytestClient)

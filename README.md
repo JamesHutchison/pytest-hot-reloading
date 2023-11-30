@@ -109,7 +109,7 @@ The daemon can be stopped with `pytest --stop-daemon`. This can be used if it ge
     - Default: `4852`.
     - Command line: `--daemon-port`
 - `PYTEST_DAEMON_PYTEST_NAME`
-    - The name of the pytest executable.
+    - The name of the pytest executable. Used for spawning the daemon.
     - Default: `pytest`.
     - Command line: `--pytest-name`
 - `PYTEST_DAEMON_WATCH_GLOBS`
@@ -120,6 +120,10 @@ The daemon can be stopped with `pytest --stop-daemon`. This can be used if it ge
     - The colon separated globs to ignore.
     - Default: `./.venv/*`.
     - Command line: `--daemon-ignore-watch-globs`
+- `PYTEST_DAEMON_START_IF_NEEDED`
+    - Start the pytest daemon if it is not running.
+    - Default: `False`
+    - Command line: `--daemon-start-if-needed`
 
 ## Workarounds
 Libraries that use mutated globals may need a workaround to work with this plugin. The preferred

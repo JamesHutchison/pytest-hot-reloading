@@ -37,7 +37,7 @@ def pytest_addoption(parser) -> None:
         "--pytest-name",
         action="store",
         default=os.getenv("PYTEST_DAEMON_PYTEST_NAME", "pytest"),
-        help="The name of the pytest executable or module",
+        help="The name of the pytest executable or module. This is used for starting the daemon.",
     )
     group.addoption(
         "--daemon-timeout",
@@ -63,6 +63,15 @@ def pytest_addoption(parser) -> None:
         default=False,
         help="Stop the daemon",
     )
+    group.addoption(
+        "--daemon-start-if-needed",
+        action="store_true",
+        default=os.getenv("PYTEST_DAEMON_START_IF_NEEDED", "False").lower() in ("true", "1"),
+        help=(
+            "Start the daemon if it is not running. To use this with VS Code, "
+            'you need add "python.experiments.optOutFrom": ["pythonTestAdapter"] to your config.'
+        ),
+    )
 
 
 # list of pytest hooks
@@ -77,6 +86,8 @@ def pytest_cmdline_main(config: Config) -> Optional[int]:
     if config.option.collectonly:
         return None
     if i_am_server:
+        return None
+    if config.option.help:
         return None
     status_code = _plugin_logic(config)
     # dont do any more work. Don't let pytest continue
@@ -181,33 +192,20 @@ def _plugin_logic(config: Config) -> int:
         sys.exit(0)
     else:
         pytest_name = config.option.pytest_name
-        client = PytestClient(daemon_port=daemon_port, pytest_name=pytest_name)
+        client = PytestClient(
+            daemon_port=daemon_port,
+            pytest_name=pytest_name,
+            start_daemon_if_needed=config.option.daemon_start_if_needed,
+        )
 
         if config.option.stop_daemon:
             client.stop()
             return 0
 
-        # find the index of the first value that is not None
-        for idx, val in enumerate(
-            [
-                x.endswith(pytest_name) or x.endswith(f"{pytest_name}/__main__.py")
-                for x in sys.argv
-            ]
-        ):
-            if val:
-                pytest_name_index = idx
-                break
-        else:
-            if "pytest_runner" in sys.argv[0]:
-                pytest_name_index = 0
-            else:
-                print(sys.argv)
-                raise Exception(
-                    "Could not find pytest name in args. "
-                    "Check the configured name versus the actual name."
-                )
-        cwd = os.getcwd()
-        status_code = client.run(cwd, sys.argv[pytest_name_index + 1 :])
+        cwd = config.invocation_params.dir
+        args = list(config.invocation_params.args)
+
+        status_code = client.run(cwd, args)
         return status_code
 
 
