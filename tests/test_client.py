@@ -38,13 +38,11 @@ class TestPytestClient:
         assert status_code == 1
 
     def test_when_sever_not_avaiable_then_raises_error(self) -> None:
-        mock = MegaMock.it(PytestClient)
-        MegaMock(mock._daemon_running).return_value = False
-        mock._will_start_daemon_if_needed = False
+        client = PytestClient(start_daemon_if_needed=False)
+        MegaPatch.it(PytestClient._daemon_running, return_value=False)
 
-        Mega(mock.run).use_real_logic()
         with pytest.raises(Exception) as exc:
-            mock.run("cwd", ["args"])
+            client.run(Path(), ["args"])
 
         assert (
             str(exc.value)
