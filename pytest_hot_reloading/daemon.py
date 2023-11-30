@@ -53,17 +53,10 @@ class PytestDaemon:
                 args += ["--daemon-watch-globs", watch_globs]
             if ignore_watch_globs:
                 args += ["--daemon-ignore-watch-globs", ignore_watch_globs]
-            # if not windows
-            additional_args: dict[str, Any]
-            if not os.name == "nt":
-                additional_args = {"start_new_session": True}
-            else:
-                additional_args = {}
             subprocess.Popen(
                 args,
                 env=os.environ,
                 cwd=os.getcwd(),
-                **additional_args,
             )
         else:
             raise NotImplementedError("Only localhost is supported for now")
