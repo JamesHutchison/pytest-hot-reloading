@@ -104,6 +104,8 @@ def monkey_patch_jurigged_function_definition():
 
     class NewFunctionDefinition(OrigFunctionDefinition):
         def reevaluate(self, new_node, glb):
+            # monkeypatch: The assertion rewrite is from pytest. Jurigged doesn't
+            #              seem to have a way to add rewrite hooks
             new_node = self.apply_assertion_rewrite(new_node, glb)
             obj = super().reevaluate(new_node, glb)
             return obj
@@ -138,17 +140,52 @@ def monkey_patch_jurigged_function_definition():
             return ast_func
 
         def stash(self, lineno=1, col_offset=0):
+            # monkeypatch: There's an off-by-one bug coming from somewhere in jurigged.
+            #              This affects replaced functions. When line numbers are wrong
+            #              the debugger and inspection logic doesn't work as expected.
             if not isinstance(self.parent, OrigFunctionDefinition):
                 co = self.get_object()
                 if co and (delta := lineno - co.co_firstlineno):
                     delta -= 1  # fix off-by-one
-                    if delta > 0:
+                    if delta != 0:
                         self.recode(jurigged_utils.shift_lineno(co, delta), use_cache=False)
 
             return super(OrigFunctionDefinition, self).stash(lineno, col_offset)
 
     # monkey patch in new definition
     jurigged_codetools.FunctionDefinition = NewFunctionDefinition
+
+
+def monkeypatch_group_definition():
+    import jurigged.codetools as jurigged_codetools  # type: ignore
+
+    def append(self, *children, ensure_separation=False):
+        for child in children:
+            # ensure_separation creates line number diff
+            # an example where this was a problem:
+            #
+            # 15 class MyClass:
+            # 77     do_something()  # type: ignore  <--- blank line inserted between do_something() and comment
+            # 78
+            # 79     def my_func(...)  <--- becomes line 80
+            #
+            # the monkey patch removes it
+            #
+            # removed code:
+            # if (
+            #     ensure_separation
+            #     and self.children
+            #     and not self.children[-1].well_separated(child)
+            # ):
+            #     ws = LineDefinition(
+            #         node=None, text="\n", filename=self.filename
+            #     )
+            #     self.children.append(ws)
+            #     ws.set_parent(self)
+            self.children.append(child)
+            child.set_parent(self)
+
+    jurigged_codetools.GroupDefinition.append = append
 
 
 def setup_jurigged(config: Config):
@@ -164,6 +201,7 @@ def setup_jurigged(config: Config):
     import jurigged
 
     monkey_patch_jurigged_function_definition()
+    monkeypatch_group_definition()
 
     pattern = _get_pattern_filters(config)
     # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
