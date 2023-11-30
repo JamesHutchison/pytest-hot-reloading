@@ -37,6 +37,20 @@ class TestPytestClient:
         assert err == "stderr\n"
         assert status_code == 1
 
+    def test_when_sever_not_avaiable_then_raises_error(self) -> None:
+        mock = MegaMock.it(PytestClient)
+        MegaMock(mock._daemon_running).return_value = False
+        mock._will_start_daemon_if_needed = False
+
+        Mega(mock.run).use_real_logic()
+        with pytest.raises(Exception) as exc:
+            mock.run("cwd", ["args"])
+
+        assert (
+            str(exc.value)
+            == "Daemon is not running and must be started, or add --daemon-start-if-needed"
+        )
+
     def test_aborting_should_close_the_socket(self) -> None:
         mock = MegaMock.it(PytestClient)
         Mega(mock.abort).use_real_logic()

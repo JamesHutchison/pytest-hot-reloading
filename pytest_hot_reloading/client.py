@@ -13,6 +13,7 @@ class PytestClient:
     _daemon_host: str
     _daemon_port: int
     _pytest_name: str
+    _will_start_daemon_if_needed: bool
 
     def __init__(
         self,
@@ -38,7 +39,7 @@ class PytestClient:
             self._start_daemon_if_needed()
         elif not self._daemon_running():
             raise Exception(
-                "Daemon is not running and must be started, or add --start-daemon-if-needed"
+                "Daemon is not running and must be started, or add --daemon-start-if-needed"
             )
 
         server = self._get_server()
