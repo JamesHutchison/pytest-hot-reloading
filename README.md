@@ -55,6 +55,10 @@ The current version of the VS Code Python extension is not, by default, compatib
 test runner will hang. However, you can revert to legacy behavior which will allow for using the automatic starting. 
 See the VS Code section below for more information.
 
+The recommended way to run the daemon is to give it its own run run profile so you can easily use the debugger in tests. As a convenience
+you can also, if you're using a dev container, add this to your postStartCommand: `pytest --daemon &`. If it doesn't seem
+to work, see: https://github.com/microsoft/vscode-remote-release/issues/8536
+
 Note that a pid file is created to track the pid.
 
 Imports and in many cases initialization logic are not reran on subsequent runs, which can be a huge time saver.
