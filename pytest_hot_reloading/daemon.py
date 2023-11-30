@@ -9,7 +9,7 @@ import tempfile
 import time
 from pathlib import Path
 from threading import Thread
-from typing import Any, Counter, Generator
+from typing import Counter, Generator
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
