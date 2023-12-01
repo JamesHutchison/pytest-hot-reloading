@@ -253,16 +253,21 @@ def _manage_prior_session_garbage(session: pytest.Session) -> None:
             prior_session.__dict__ = session.__dict__
 
 
+# performance improvements
+# when doing a best_effort_copy, do not copy these attributes
 no_copy = {
     "_arg2fixturedefs",
     "_fixtureinfo",
     "keywords",
     "_fixturemanager",
     "_pyfuncitem",
-    # '_request'
 }
 
-use_best_effort_copy = {"_request"}
+# when doing a best_effort_copy, do not deep copy this
+# instead, force a best effort up to a given depth
+use_best_effort_copy = {
+    "_request",
+}
 
 
 def _pytest_main(config: pytest.Config, session: pytest.Session):
