@@ -26,12 +26,12 @@ The minimum Python version is 3.10
 ## Demo
 
 ### With hot reloading
-Slower initial start time but faster subsequent runs
+Faster subsequent runs
 
-![Hot reloading demo](docs/hot-reloading-demo.gif)
+![Hot reloading demo](docs/with-daemon.gif)
 
 ### Without hot reloading
-![Not hot reloading demo](docs/not-hot-reloading-demo.gif)
+![Not hot reloading demo](docs/no-daemon.gif)
 
 ## Installation
 Do not install in production code. This is exclusively for the developer environment.
@@ -54,12 +54,11 @@ When running pytest, the plugin will detect whether the daemon is running.
 If the daemon is not running, it will error unless the `--daemon-start-if-needed` argument is passed.
 
 The current version of the VS Code Python extension is not, by default, compatible with automatically starting the daemon. The
-test runner will hang. However, you can revert to legacy behavior which will allow for using the automatic starting. 
+test runner will hang. However, you can revert to legacy behavior which will allow for using the automatic starting.
 See the VS Code section below for more information.
 
 The recommended way to run the daemon is to give it its own run run profile so you can easily use the debugger in tests. As a convenience
-you can also, if you're using a dev container, add this to your postStartCommand: `pytest --daemon &`. If it doesn't seem
-to work, see: https://github.com/microsoft/vscode-remote-release/issues/8536
+you can also, if you're using a dev container, add this to your postStartCommand: `pytest --daemon &`. If the daemon doesn't start from your postStartCommand, see: https://github.com/microsoft/vscode-remote-release/issues/8536
 
 Note that a pid file is created to track the pid.
 
