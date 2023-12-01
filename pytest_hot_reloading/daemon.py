@@ -253,6 +253,23 @@ def _manage_prior_session_garbage(session: pytest.Session) -> None:
             prior_session.__dict__ = session.__dict__
 
 
+# performance improvements
+# when doing a best_effort_copy, do not copy these attributes
+no_copy = {
+    "_arg2fixturedefs",
+    "_fixtureinfo",
+    "keywords",
+    "_fixturemanager",
+    "_pyfuncitem",
+}
+
+# when doing a best_effort_copy, do not deep copy this
+# instead, force a best effort up to a given depth
+use_best_effort_copy = {
+    "_request",
+}
+
+
 def _pytest_main(config: pytest.Config, session: pytest.Session):
     """
     A monkey patched version of _pytest._main that caches test collection
@@ -272,7 +289,7 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
 
     _pytest.capture.CaptureManager.resume_global_capture = start_global_capture_if_needed  # type: ignore
 
-    def best_effort_copy(item, depth_remaining=2):
+    def best_effort_copy(item, depth_remaining=2, force_best_effort=False):
         """
         Copy test items. The items have references to modules and
         other things that cannot be deep copied.
@@ -286,6 +303,19 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
         # NodeKeywords is an example of an object without a __dict__
         if hasattr(item, "__dict__"):
             for k, v in item.__dict__.items():
+                # performance-tweaks
+                if k in no_copy:
+                    item_copy.__dict__[k] = v
+                    continue
+                if k in use_best_effort_copy:
+                    item_copy.__dict__[k] = best_effort_copy(v, 2, force_best_effort=True)
+                    continue
+                if force_best_effort:
+                    item_copy.__dict__[k] = best_effort_copy(
+                        v, depth_remaining - 1, force_best_effort=True
+                    )
+                    continue
+
                 try:
                     item_copy.__dict__[k] = copy.deepcopy(v)
                 except KeyboardInterrupt:
