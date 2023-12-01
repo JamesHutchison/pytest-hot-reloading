@@ -191,3 +191,7 @@ the given module will not be executed.
 ## Notes
 - pytest-xdist will have its logic disabled, even if args are passed in to enable it
 - pytest-django will not create test database suffixes for multiworker runs such as tox.
+- Extreme example using import perf test from megamock:
+  - Without hot reloading: 0.71s
+  - With hot reloading (1st run): 1.79s
+  - With hot reloading (2nd run): 0.00s
