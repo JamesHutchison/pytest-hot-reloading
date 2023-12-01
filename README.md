@@ -153,6 +153,10 @@ Then enable automatically starting the daemon in your settings:
     - Start the pytest daemon if it is not running.
     - Default: `False`
     - Command line: `--daemon-start-if-needed`
+- `PYTEST_DAEMON_DISABLE`
+    - Disable the pytest plugin for this test run.
+    - Default: `False`
+    - Command line: `--daemon-disable`
 
 ## Workarounds
 Libraries that use mutated globals may need a workaround to work with this plugin. The preferred
