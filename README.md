@@ -10,8 +10,7 @@ A hot reloading pytest daemon, implemented as a plugin.
 - System for registering workarounds in case something doesn't work out of the box
 
 ## Trade-offs
-- ~~First run is slower~~
-  - After a recent performance improvement, this no longer seems to be true.
+- First time imports are slower (measured < 10% to > 100% slower depending on the repo)
 - May not work with some libraries
 - Sometimes gets in a bad state and needs to be restarted
 - Requires starting the daemon separately or adding a command line option to automatically start it
