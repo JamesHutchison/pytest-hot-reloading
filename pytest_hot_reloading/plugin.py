@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import sys
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
 
@@ -19,6 +20,16 @@ if TYPE_CHECKING:
     from pytest import Config, Item, Session
 
 
+class EnvVariables(str, Enum):
+    PYTEST_DAEMON_PORT = "PYTEST_DAEMON_PORT"
+    PYTEST_DAEMON_PYTEST_NAME = "PYTEST_DAEMON_PYTEST_NAME"
+    PYTEST_DAEMON_TIMEOUT = "PYTEST_DAEMON_TIMEOUT"
+    PYTEST_DAEMON_WATCH_GLOBS = "PYTEST_DAEMON_WATCH_GLOBS"
+    PYTEST_DAEMON_IGNORE_WATCH_GLOBS = "PYTEST_DAEMON_IGNORE_WATCH_GLOBS"
+    PYTEST_DAEMON_START_IF_NEEDED = "PYTEST_DAEMON_START_IF_NEEDED"
+    PYTEST_DAEMON_DISABLE = "PYTEST_DAEMON_DISABLE"
+
+
 def pytest_addoption(parser) -> None:
     group = parser.getgroup("daemon")
     group.addoption(
@@ -28,33 +39,39 @@ def pytest_addoption(parser) -> None:
         help="Start the daemon. If it is already running, the old instance will stop.",
     )
     group.addoption(
+        "--daemon-disable",
+        action="store_true",
+        default=(os.getenv(EnvVariables.PYTEST_DAEMON_DISABLE, "False").lower() in ("true", "1")),
+        help="Do not use the daemon for this test run.",
+    )
+    group.addoption(
         "--daemon-port",
         action="store",
-        default=int(os.getenv("PYTEST_DAEMON_PORT", "4852")),
+        default=int(os.getenv(EnvVariables.PYTEST_DAEMON_PORT, "4852")),
         help="The port to use for the daemon. You generally shouldn't need to set this.",
     )
     group.addoption(
         "--pytest-name",
         action="store",
-        default=os.getenv("PYTEST_DAEMON_PYTEST_NAME", "pytest"),
+        default=os.getenv(EnvVariables.PYTEST_DAEMON_PYTEST_NAME, "pytest"),
         help="The name of the pytest executable or module. This is used for starting the daemon.",
     )
     group.addoption(
         "--daemon-timeout",
         action="store",
-        default=os.getenv("PYTEST_DAEMON_TIMEOUT", (5 * 60)),
+        default=os.getenv(EnvVariables.PYTEST_DAEMON_TIMEOUT, (5 * 60)),
         help="The timeout in seconds to wait on a test suite to finish. This is not yet implemented.",
     )
     group.addoption(
         "--daemon-watch-globs",
         action="store",
-        default=os.getenv("PYTEST_DAEMON_WATCH_GLOBS", "./*.py"),
+        default=os.getenv(EnvVariables.PYTEST_DAEMON_WATCH_GLOBS, "./*.py"),
         help="The globs to watch for changes. This is a colon separated list of globs.",
     )
     group.addoption(
         "--daemon-ignore-watch-globs",
         action="store",
-        default=os.getenv("PYTEST_DAEMON_IGNORE_WATCH_GLOBS", "./.venv/*"),
+        default=os.getenv(EnvVariables.PYTEST_DAEMON_IGNORE_WATCH_GLOBS, "./.venv/*"),
         help="The globs to ignore for changes. This is a colon separated list of globs.",
     )
     group.addoption(
@@ -66,7 +83,10 @@ def pytest_addoption(parser) -> None:
     group.addoption(
         "--daemon-start-if-needed",
         action="store_true",
-        default=os.getenv("PYTEST_DAEMON_START_IF_NEEDED", "False").lower() in ("true", "1"),
+        default=(
+            os.getenv(EnvVariables.PYTEST_DAEMON_START_IF_NEEDED, "False").lower()
+            in ("true", "1")
+        ),
         help=(
             "Start the daemon if it is not running. To use this with VS Code, "
             'you need add "python.experiments.optOutFrom": ["pythonTestAdapter"] to your config.'
@@ -88,6 +108,8 @@ def pytest_cmdline_main(config: Config) -> Optional[int]:
     if i_am_server:
         return None
     if config.option.help:
+        return None
+    if config.option.daemon_disable:
         return None
     status_code = _plugin_logic(config)
     # dont do any more work. Don't let pytest continue
