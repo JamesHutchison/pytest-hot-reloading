@@ -9,8 +9,6 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
 
-from pytest import Parser
-
 from pytest_hot_reloading.client import PytestClient
 
 # this is modified by the daemon so that the pytest_collection hooks does not run
@@ -19,7 +17,7 @@ i_am_server = False
 seen_paths: set[Path] = set()
 
 if TYPE_CHECKING:
-    from pytest import Config, Item, Session
+    from pytest import Config, Item, Parser, Session
 
 
 class EnvVariables(str, Enum):
