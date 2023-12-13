@@ -9,7 +9,7 @@ line-length = 98
 
 [tool.poetry]
 name = "pytest-hot-reloading"
-version = "0.1.0-alpha.10"
+version = "0.1.0-alpha.11"
 description = ""
 authors = ["James Hutchison <jamesghutchison@proton.me>"]
 readme = "README.md"
@@ -19,8 +19,6 @@ packages = [{ include = "pytest_hot_reloading" }]
 python = "^3.10"
 jurigged = "^0.5.5"
 cachetools = "^5.3.0"
-types-cachetools = "^5.3.0.5"
-megamock = "^0.1.0b9"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.2.0"
@@ -31,6 +29,8 @@ django = "4.2.2"
 psycopg2-binary = "^2.9.6"
 pytest-env = "^0.8.1"
 pytest-xdist = "^3.3.1"
+megamock = "^0.1.0b9"
+types-cachetools = "^5.3.0.5"
 
 [build-system]
 requires = ["poetry-core"]
