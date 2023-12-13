@@ -24,12 +24,12 @@ The minimum Python version is 3.10
 
 ## Demo
 
-### With hot reloading
+### With the hot reloading daemon
 Faster subsequent runs
 
 ![Hot reloading demo](docs/with-daemon.gif)
 
-### Without hot reloading
+### Without the hot reloading daemon
 ![Not hot reloading demo](docs/no-daemon.gif)
 
 ## Installation
