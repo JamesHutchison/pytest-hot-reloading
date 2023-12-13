@@ -183,6 +183,11 @@ If you are a library author, you can disable any workarounds for your library by
 module `_clear_hot_reload_workarounds.py`. If this is successfully imported, then workarounds for
 the given module will not be executed.
 
+## Need More Speed?
+- If using docker, run everything out of a named volume. Do not use bind mounts (sharing with the host file system)
+- Set `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` in the environment to disable automatic search and loading of plugins
+- Run out of a Github Codespace or similar dedicated external environment
+
 ## Known Issues
 - This is early alpha
 - The jurigged library is not perfect and sometimes it gets in a bad state
