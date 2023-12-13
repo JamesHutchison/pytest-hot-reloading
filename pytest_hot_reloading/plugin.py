@@ -9,6 +9,8 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
 
+from pytest import Parser
+
 from pytest_hot_reloading.client import PytestClient
 
 # this is modified by the daemon so that the pytest_collection hooks does not run
@@ -98,18 +100,29 @@ def pytest_addoption(parser) -> None:
 # https://docs.pytest.org/en/stable/reference.html#_pytest.hookspec.pytest_addhooks
 
 
+def do_early_escape(config: Config) -> bool:
+    if getattr(config.option, "collectonly", None):
+        return True
+    if i_am_server:
+        return True
+    if getattr(config.option, "help", None):
+        return True
+    if config.option.daemon_disable:
+        return True
+    return False
+
+
+def pytest_load_initial_conftests(early_config: Config, args: list[str], parser: Parser) -> None:
+    if do_early_escape(early_config):
+        return
+    early_config.known_args_namespace.noconftest = True
+
+
 def pytest_cmdline_main(config: Config) -> Optional[int]:
     """
     This hook is called by pytest and is one of the first hooks.
     """
-    # early escapes
-    if config.option.collectonly:
-        return None
-    if i_am_server:
-        return None
-    if config.option.help:
-        return None
-    if config.option.daemon_disable:
+    if do_early_escape(config):
         return None
     status_code = _plugin_logic(config)
     # dont do any more work. Don't let pytest continue
