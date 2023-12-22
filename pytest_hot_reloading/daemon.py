@@ -325,6 +325,8 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
                     item_copy.__dict__[k] = best_effort_copy(v, depth_remaining - 1)
         return item_copy
 
+    num_tests_collected: int
+
     # here config.args becomes basically the tests to run. Other arguments are omitted
     # not 100% sure this is always the case
     session_key = tuple(config.args)
@@ -336,10 +338,12 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
         config.hook.pytest_collection(session=session)
         print(f"Pytest Daemon: Collection took {(time.time() - start):0.3f} seconds")
         session_item_cache[session_key] = tuple(best_effort_copy(x) for x in session.items)
+        num_tests_collected = session.testscollected
     else:
         print("Pytest Daemon: Using cached collection")
         # Assign the prior test items (tests to run) and config to the current session
         session.items = items  # type: ignore
+        num_tests_collected = len(items)
         session.config = config
         for i in items:
             # Items have references to the config and the session
@@ -352,6 +356,6 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
 
     if session.testsfailed:
         return pytest.ExitCode.TESTS_FAILED
-    elif session.testscollected == 0:
+    elif num_tests_collected == 0:
         return pytest.ExitCode.NO_TESTS_COLLECTED
     return None
