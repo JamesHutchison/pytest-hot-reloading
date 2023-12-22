@@ -13,7 +13,7 @@
             "args": [
                 "--daemon",
                 "--daemon-watch-globs",
-                "./pytest_hot_reloading/daemon*.py:./pytest_hot_reloading/plugin.py",
+                "./pytest_hot_reloading/daemon*.py:./pytest_hot_reloading/plugin.py:./metatests/mtests/*.py",
                 "--daemon-ignore-watch-globs",
                 "./.venv/*" // this is the default value
             ]
