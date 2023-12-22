@@ -337,13 +337,21 @@ def pytest_collection_modifyitems(session: Session, config: Config, items: list[
     """
     This hooks is called by pytest after the collection phase.
 
-    This adds tests to the watch list automatically.
+    This adds tests and conftests to the watch list automatically.
 
     The client should never get this far. This should only be
     used by the daemon.
     """
     global seen_paths
     import jurigged
+
+    for conftest_list in config.pluginmanager._dirpath2confmods.values():
+        for conftest_module in conftest_list:
+            if conftest_path := conftest_module.__file__:
+                path = Path(conftest_path)
+                if path not in seen_paths:
+                    jurigged.watch(pattern=str(path))
+                    seen_paths.add(path)
 
     for item in items:
         if item.path and item.path not in seen_paths:
