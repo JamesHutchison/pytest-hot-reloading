@@ -39,7 +39,7 @@ def run_test(
     for func in file_mod_funcs:
         func()
     for retry_num in range(retries + 1):
-        time.sleep(change_delay)
+        time.sleep(change_delay + retry_num * 0.25)
         try:
             if system(f"pytest {TEMP_DIR}/test_fixture_changes.py::{test_name}"):
                 if not expect_fail:
