@@ -152,7 +152,7 @@ class PytestDaemon:
         sys.stdout = stdout
         sys.stderr = stderr
 
-        if self._signaler.should_clear_cache():
+        if self._signaler.receive_clear_cache_signal():
             session_item_cache.clear()
 
         import _pytest.main
