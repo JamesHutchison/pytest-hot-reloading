@@ -30,15 +30,15 @@ def run_test(
     change_delay: float = 0.01,
     retries: int = 0,
 ):
-    make_fresh_copy()
-    if system(
-        f"pytest --daemon-start-if-needed {'--daemon-use-watchman' if use_watchman else ''} "
-        f"{TEMP_DIR}/test_fixture_changes.py::test_always_ran"
-    ):
-        raise Exception("Failed to prep daemon")
-    for func in file_mod_funcs:
-        func()
     for retry_num in range(retries + 1):
+        make_fresh_copy()
+        if system(
+            f"pytest --daemon-start-if-needed {'--daemon-use-watchman' if use_watchman else ''} "
+            f"{TEMP_DIR}/test_fixture_changes.py::test_always_ran"
+        ):
+            raise Exception("Failed to prep daemon")
+        for func in file_mod_funcs:
+            func()
         time.sleep(change_delay + retry_num * 0.25)
         try:
             if system(f"pytest {TEMP_DIR}/test_fixture_changes.py::{test_name}"):
@@ -135,7 +135,9 @@ def modify_dependency_fixture_return() -> None:
     # write new version of conftest.py
     with MODIFIED_CONFTEST_FILE.open("w") as f:
         for line in lines:
-            f.write(line.replace("return 1  # dependency value", "return 2  # dependency value"))
+            f.write(
+                line.replace("return 1  # dependency value", "return 2222  # dependency value")
+            )
 
 
 def modify_dependency_fixture_name() -> None:

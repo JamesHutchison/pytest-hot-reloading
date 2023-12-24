@@ -189,6 +189,10 @@ def monkey_patch_jurigged_function_definition():
             is_test = new_node.name.startswith("test_")
             if is_test:
                 old_sig = inspect.signature(func)
+            else:
+                if new_node.name in fixture_names:
+                    # if a fixture is updated, then clear the session cache to avoid stale responses
+                    signaler.signal_clear_cache()
             # monkeypatch: The assertion rewrite is from pytest. Jurigged doesn't
             #              seem to have a way to add rewrite hooks
             new_node = self.apply_assertion_rewrite(new_node, glb)

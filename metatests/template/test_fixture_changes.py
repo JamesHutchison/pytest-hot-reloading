@@ -64,7 +64,7 @@ def test_fixture_changes_dependency(dependency_change_fixture):
 
     Should pass
     """
-    assert dependency_change_fixture == 2
+    assert dependency_change_fixture == 2222
 
 
 def test_fixture_has_dependency_renamed(dependency_change_fixture):
