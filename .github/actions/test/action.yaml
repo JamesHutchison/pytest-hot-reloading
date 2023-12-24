@@ -25,5 +25,5 @@ runs:
     shell: bash
   - name: Run metatests
     run: |
-      poetry run python metatests/metatest_runner.py --use-watchman --change-delay 2 --retry 3
+      poetry run python metatests/metatest_runner.py --use-watchman --change-delay 1 --retry 20
     shell: bash
