@@ -144,12 +144,13 @@ def monkey_patch_jurigged_function_definition():
             super().__init__(*args, **kwargs)
 
             definition = self.defn.codestring.splitlines()
+            line: str
             for line in definition:
-                if "@pytest.fixture" in line or "@fixture" in line:
-                    signaler.should_clear_cache()
-                    signaler.add_deleted_fixture(self.defn.name)
+                line = line.lstrip()
+                if line.startswith(("@pytest.fixture", "@fixture")):
+                    signaler.signal_clear_cache()
                     break
-                if "def " in line:
+                if line.startswith("def"):
                     break
 
     class NewFunctionDefinition(OrigFunctionDefinition):

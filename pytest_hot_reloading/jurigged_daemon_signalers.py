@@ -10,11 +10,3 @@ class JuriggedDaemonSignaler:
         ret = self._do_cache_clear
         self._do_cache_clear = False
         return ret
-
-    def add_deleted_fixture(self, name: str) -> None:
-        self._deleted_fixtures.add(name)
-
-    def pop_deleted_fixture(self) -> str | None:
-        if self._deleted_fixtures:
-            return self._deleted_fixtures.pop()
-        return None

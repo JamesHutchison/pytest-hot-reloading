@@ -155,9 +155,6 @@ class PytestDaemon:
         if self._signaler.should_clear_cache():
             session_item_cache.clear()
 
-        while deleted_fixture := self._signaler.pop_deleted_fixture():
-            pass
-
         import _pytest.main
 
         # monkeypatch in the main that does test collection caching

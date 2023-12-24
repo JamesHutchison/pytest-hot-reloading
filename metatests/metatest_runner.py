@@ -4,10 +4,7 @@ from pathlib import Path
 from typing import Callable
 
 TEMP_DIR = Path("./mtests")
-TEST_FILES = (
-    Path("conftest.py"),
-    Path("test_fixture_changes.py"),
-)
+TEMPLATE_DIR = Path("./template")
 MODIFIED_CONFTEST_FILE = TEMP_DIR / "conftest.py"
 MODIFIED_TEST_FILE = TEMP_DIR / "test_fixture_changes.py"
 
@@ -16,9 +13,7 @@ def make_fresh_copy():
     # delete the directory contents if it is not empty
     if TEMP_DIR.exists():
         shutil.rmtree(TEMP_DIR)
-    TEMP_DIR.mkdir()
-    for file in TEST_FILES:
-        shutil.copy(file, TEMP_DIR / file)
+    shutil.copytree(TEMPLATE_DIR, TEMP_DIR)
     with (TEMP_DIR / ".gitignore").open("w") as gitignore:
         gitignore.write("*")
 
@@ -167,32 +162,35 @@ def remove_dependency_fixture_usage() -> None:
             f.write(
                 line.replace(
                     "dependency_change_fixture(dependency_fixture)", "dependency_change_fixture()"
+                ).replace(
+                    "dependency_removed_fixture(dependency_fixture)",
+                    "dependency_removed_fixture()",
                 )
             )
 
 
 def main() -> None:
-    # system("pytest --stop-daemon")
-    # run_test("test_adding_fixture", add_fixture)
-    # run_test("test_adding_fixture_async", add_async_fixture)
-    # run_test("test_removing_fixture", remove_fixture)  # needed to trigger caching of fixture info
-    # run_test("test_removing_fixture", remove_fixture, remove_use_of_fixture)
-    # run_test(
-    #     "test_removing_fixture_async",
-    #     lambda: remove_fixture("# start of async removed fixture"),
-    #     lambda: remove_use_of_fixture("async_removed_fixture"),
-    # )
+    system("pytest --stop-daemon")
+    run_test("test_adding_fixture", add_fixture)
+    run_test("test_adding_fixture_async", add_async_fixture)
+    run_test("test_removing_fixture")  # needed to trigger caching of fixture info
+    run_test("test_removing_fixture", remove_fixture, remove_use_of_fixture)
+    run_test(
+        "test_removing_fixture_async",
+        lambda: remove_fixture("# start of async removed fixture"),
+        lambda: remove_use_of_fixture("async_removed_fixture"),
+    )
     run_test("test_removing_should_fail", remove_fixture, expect_fail=True)
-    # run_test("test_renaming_fixture", rename_fixture, rename_use_of_fixture)
-    # run_test("test_renaming_should_fail", rename_fixture, expect_fail=True)
-    # run_test("test_fixture_changes_dependency", modify_dependency_fixture_return)
-    # run_test("test_fixture_has_dependency_renamed", modify_dependency_fixture_name)
-    # run_test(
-    #     "test_fixture_removes_dependency",
-    #     remove_dependency_fixture,
-    #     remove_dependency_fixture_usage,
-    # )
-    # run_test("test_fixture_has_dependency_removed", remove_dependency_fixture, expect_fail=True)
+    run_test("test_renaming_fixture", rename_fixture, rename_use_of_fixture)
+    run_test("test_renaming_should_fail", rename_fixture, expect_fail=True)
+    run_test("test_fixture_changes_dependency", modify_dependency_fixture_return)
+    run_test("test_fixture_has_dependency_renamed", modify_dependency_fixture_name)
+    run_test("test_fixture_has_dependency_removed", remove_dependency_fixture, expect_fail=True)
+    run_test(
+        "test_fixture_removes_dependency",
+        remove_dependency_fixture,
+        remove_dependency_fixture_usage,
+    )
 
 
 if __name__ == "__main__":
