@@ -145,7 +145,12 @@ def monkey_patch_jurigged_function_definition():
 
             self._signal_clear_cache_if_fixture()
 
-        def _signal_clear_cache_if_fixture(self):
+        def _signal_clear_cache_if_fixture(self) -> None:
+            """
+            Clear the cache if a fixture is deleted.
+
+            If this isn't here, then deleted fixtures may still exist.
+            """
             definition = self.defn.codestring.splitlines()
             line: str
             for line in definition:
