@@ -15,6 +15,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 import pytest
 from cachetools import TTLCache
 
+from pytest_hot_reloading.jurigged_daemon_signalers import JuriggedDaemonSignaler
 from pytest_hot_reloading.workarounds import (
     run_workarounds_post,
     run_workarounds_pre,
@@ -22,10 +23,16 @@ from pytest_hot_reloading.workarounds import (
 
 
 class PytestDaemon:
-    def __init__(self, daemon_host: str = "localhost", daemon_port: int = 4852) -> None:
+    def __init__(
+        self,
+        signaler: JuriggedDaemonSignaler,
+        daemon_host: str = "localhost",
+        daemon_port: int = 4852,
+    ) -> None:
         self._daemon_host = daemon_host
         self._daemon_port = daemon_port
         self._server: SimpleXMLRPCServer | None = None
+        self._signaler = signaler
 
     @property
     def pid_file(self) -> Path:
@@ -144,6 +151,12 @@ class PytestDaemon:
 
         sys.stdout = stdout
         sys.stderr = stderr
+
+        if self._signaler.should_clear_cache():
+            session_item_cache.clear()
+
+        while deleted_fixture := self._signaler.pop_deleted_fixture():
+            pass
 
         import _pytest.main
 

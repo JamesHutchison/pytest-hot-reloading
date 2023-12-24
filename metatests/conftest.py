@@ -6,6 +6,8 @@ def removed_fixture():
     """
     This fixture is removed
     """
+    a = 1
+    pass
 
 
 @pytest.fixture()  # start of async removed fixture

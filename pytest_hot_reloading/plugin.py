@@ -3,6 +3,7 @@ Pytest Hot Reloading plugin
 """
 from __future__ import annotations
 
+import inspect
 import os
 import sys
 from enum import Enum
@@ -10,11 +11,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
 
 from pytest_hot_reloading.client import PytestClient
+from pytest_hot_reloading.jurigged_daemon_signalers import JuriggedDaemonSignaler
 
 # this is modified by the daemon so that the pytest_collection hooks does not run
 i_am_server = False
 
 seen_paths: set[Path] = set()
+signaler = JuriggedDaemonSignaler()
 
 if TYPE_CHECKING:
     from pytest import Config, Item, Parser, Session
@@ -132,15 +135,46 @@ def monkey_patch_jurigged_function_definition():
     import jurigged.utils as jurigged_utils  # type: ignore
 
     OrigFunctionDefinition = jurigged_codetools.FunctionDefinition
+    OrigDeleteOperation = jurigged_codetools.DeleteOperation
 
     import ast
 
+    class NewDeleteOperation(OrigDeleteOperation):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+
+            definition = self.defn.codestring.splitlines()
+            for line in definition:
+                if "@pytest.fixture" in line or "@fixture" in line:
+                    signaler.should_clear_cache()
+                    signaler.add_deleted_fixture(self.defn.name)
+                    break
+                if "def " in line:
+                    break
+
     class NewFunctionDefinition(OrigFunctionDefinition):
         def reevaluate(self, new_node, glb):
+            func = glb[new_node.name]
+            is_test = new_node.name.startswith("test_")
+            if is_test:
+                old_sig = inspect.signature(func)
             # monkeypatch: The assertion rewrite is from pytest. Jurigged doesn't
             #              seem to have a way to add rewrite hooks
             new_node = self.apply_assertion_rewrite(new_node, glb)
             obj = super().reevaluate(new_node, glb)
+
+            if is_test:
+                new_sig = inspect.signature(func)
+
+            # if the signature changes, clear the session cache
+            # otherwise pytest will use the old signature
+            # this is a more of a band-aid because the session cache
+            # could more intelligently update what was changed
+            # this band-aid fixes tests using stale fixture info
+            if is_test:
+                if old_sig != new_sig:
+                    signaler.signal_clear_cache()
+
             return obj
 
         def apply_assertion_rewrite(self, ast_func, glb):
@@ -187,6 +221,7 @@ def monkey_patch_jurigged_function_definition():
 
     # monkey patch in new definition
     jurigged_codetools.FunctionDefinition = NewFunctionDefinition
+    jurigged_codetools.DeleteOperation = NewDeleteOperation
 
 
 def monkeypatch_group_definition():
@@ -257,7 +292,7 @@ def _plugin_logic(config: Config) -> int:
 
         from pytest_hot_reloading.daemon import PytestDaemon
 
-        daemon = PytestDaemon(daemon_port=daemon_port)
+        daemon = PytestDaemon(daemon_port=daemon_port, signaler=signaler)
 
         daemon.run_forever()
         sys.exit(0)
@@ -335,7 +370,7 @@ def _get_pattern_filters(config: Config) -> str | Callable[[str], bool]:
 
 def pytest_collection_modifyitems(session: Session, config: Config, items: list[Item]) -> None:
     """
-    This hooks is called by pytest after the collection phase.
+    This hook is called by pytest after the collection phase.
 
     This adds tests and conftests to the watch list automatically.
 

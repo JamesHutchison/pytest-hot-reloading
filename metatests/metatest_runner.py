@@ -19,11 +19,13 @@ def make_fresh_copy():
     TEMP_DIR.mkdir()
     for file in TEST_FILES:
         shutil.copy(file, TEMP_DIR / file)
+    with (TEMP_DIR / ".gitignore").open("w") as gitignore:
+        gitignore.write("*")
 
 
 def run_test(test_name: str, *file_mod_funcs: Callable, expect_fail: bool = False):
-    if expect_fail:
-        return
+    # if expect_fail:
+    #     return
     # system("pytest --stop-daemon")
     make_fresh_copy()
     if system(
@@ -173,14 +175,14 @@ def main() -> None:
     # system("pytest --stop-daemon")
     # run_test("test_adding_fixture", add_fixture)
     # run_test("test_adding_fixture_async", add_async_fixture)
-    run_test("test_removing_fixture")
-    run_test("test_removing_fixture", remove_fixture, remove_use_of_fixture)
+    # run_test("test_removing_fixture", remove_fixture)  # needed to trigger caching of fixture info
+    # run_test("test_removing_fixture", remove_fixture, remove_use_of_fixture)
     # run_test(
     #     "test_removing_fixture_async",
     #     lambda: remove_fixture("# start of async removed fixture"),
     #     lambda: remove_use_of_fixture("async_removed_fixture"),
     # )
-    # run_test("test_removing_should_fail", remove_fixture, expect_fail=True)
+    run_test("test_removing_should_fail", remove_fixture, expect_fail=True)
     # run_test("test_renaming_fixture", rename_fixture, rename_use_of_fixture)
     # run_test("test_renaming_should_fail", rename_fixture, expect_fail=True)
     # run_test("test_fixture_changes_dependency", modify_dependency_fixture_return)
