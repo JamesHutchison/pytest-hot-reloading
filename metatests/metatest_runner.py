@@ -3,8 +3,9 @@ from os import system
 from pathlib import Path
 from typing import Callable
 
-TEMP_DIR = Path("./mtests")
-TEMPLATE_DIR = Path("./template")
+METATESTS_DIR = Path(__file__).parent
+TEMP_DIR = METATESTS_DIR / "mtests"
+TEMPLATE_DIR = METATESTS_DIR / "template"
 MODIFIED_CONFTEST_FILE = TEMP_DIR / "conftest.py"
 MODIFIED_TEST_FILE = TEMP_DIR / "test_fixture_changes.py"
 
