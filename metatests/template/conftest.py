@@ -1,5 +1,6 @@
 import pytest
-from used_by_conftest import *  # noqa
+
+from .used_by_conftest import *  # noqa
 
 
 @pytest.fixture()  # start of removed fixture
