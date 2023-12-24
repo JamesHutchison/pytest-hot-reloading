@@ -23,3 +23,6 @@ runs:
     run: |
       poetry run pytest tests/workarounds
     shell: bash
+  - name: Run metatests
+    run: |
+      poetry run python metatests/metatest_runner.py
