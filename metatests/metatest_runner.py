@@ -1,6 +1,5 @@
 import argparse
 import shutil
-import time
 from os import system
 from pathlib import Path
 from typing import Callable
