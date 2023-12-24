@@ -26,3 +26,4 @@ runs:
   - name: Run metatests
     run: |
       poetry run python metatests/metatest_runner.py
+    shell: bash
