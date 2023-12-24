@@ -32,6 +32,7 @@ class EnvVariables(str, Enum):
     PYTEST_DAEMON_START_IF_NEEDED = "PYTEST_DAEMON_START_IF_NEEDED"
     PYTEST_DAEMON_DISABLE = "PYTEST_DAEMON_DISABLE"
     PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES = "PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES"
+    PYTEST_DAEMON_USE_WATCHMAN = "PYTEST_DAEMON_USE_WATCHMAN"
 
 
 def pytest_addoption(parser) -> None:
@@ -106,6 +107,18 @@ def pytest_addoption(parser) -> None:
         help=(
             "Do not automatically watch fixtures. "
             "Typically this would be used if there's too many fixtures and the watch glob is used instead."
+        ),
+    )
+    group.addoption(
+        "--daemon-use-watchman",
+        action="store_true",
+        default=(
+            os.getenv(EnvVariables.PYTEST_DAEMON_USE_WATCHMAN, "False").lower() in ("true", "1")
+        ),
+        help=(
+            "Use watchman instead of polling. "
+            "This reduces CPU usage, takes up open file handles, and improves responsiveness. "
+            "Some systems cannot reliably use this."
         ),
     )
 
@@ -292,19 +305,21 @@ def setup_jurigged(config: Config):
     monkey_patch_jurigged_function_definition()
     monkeypatch_group_definition()
     if not config.option.daemon_do_not_autowatch_fixtures:
-        monkeypatch_fixture_marker()
+        monkeypatch_fixture_marker(config.option.daemon_use_watchman)
     else:
         print("Not autowatching fixtures")
 
     pattern = _get_pattern_filters(config)
     # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
-    jurigged.watch(pattern=pattern, logger=_jurigged_logger, poll=True)
+    jurigged.watch(
+        pattern=pattern, logger=_jurigged_logger, poll=(not config.option.daemon_use_watchman)
+    )
 
 
 seen_files = set()
 
 
-def monkeypatch_fixture_marker():
+def monkeypatch_fixture_marker(use_watchman: bool):
     import jurigged
     import pytest
     from _pytest import fixtures
@@ -331,7 +346,7 @@ def monkeypatch_fixture_marker():
         # add fixture file to watched files
         if fixture_file not in seen_files:
             seen_files.add(fixture_file)
-            jurigged.watch(pattern=fixture_file, logger=_jurigged_logger, poll=True)
+            jurigged.watch(pattern=fixture_file, logger=_jurigged_logger, poll=(not use_watchman))
 
         fixtures.FixtureFunctionMarker = FixtureFunctionMarkerNew
         try:
@@ -451,5 +466,9 @@ def pytest_collection_modifyitems(session: Session, config: Config, items: list[
 
     for item in items:
         if item.path and item.path not in seen_paths:
-            jurigged.watch(pattern=str(item.path), logger=_jurigged_logger, poll=True)
+            jurigged.watch(
+                pattern=str(item.path),
+                logger=_jurigged_logger,
+                poll=(not config.option.daemon_use_watchman),
+            )
             seen_paths.add(item.path)

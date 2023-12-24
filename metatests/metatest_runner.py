@@ -25,13 +25,11 @@ def make_fresh_copy():
 def run_test(test_name: str, *file_mod_funcs: Callable, expect_fail: bool = False):
     make_fresh_copy()
     if system(
-        f"pytest --daemon-start-if-needed {TEMP_DIR}/test_fixture_changes.py::test_always_ran"
+        f"pytest --daemon-start-if-needed --daemon-use-watchman {TEMP_DIR}/test_fixture_changes.py::test_always_ran"
     ):
         raise Exception("Failed to prep daemon")
     for func in file_mod_funcs:
         func()
-    # give time for changes to get picked up
-    time.sleep(0.25)
     if system(f"pytest {TEMP_DIR}/test_fixture_changes.py::{test_name}"):
         if not expect_fail:
             raise Exception(f"Failed to run test {test_name}")
