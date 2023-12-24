@@ -143,6 +143,9 @@ def monkey_patch_jurigged_function_definition():
         def __init__(self, *args, **kwargs) -> None:
             super().__init__(*args, **kwargs)
 
+            self._signal_clear_cache_if_fixture()
+
+        def _signal_clear_cache_if_fixture(self):
             definition = self.defn.codestring.splitlines()
             line: str
             for line in definition:
