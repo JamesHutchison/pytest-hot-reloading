@@ -1,5 +1,6 @@
 import argparse
 import shutil
+import time
 from os import system
 from pathlib import Path
 from typing import Callable
@@ -26,6 +27,7 @@ def run_test(
     *file_mod_funcs: Callable,
     expect_fail: bool = False,
     use_watchman: bool = False,
+    change_delay: float = 0.01,
 ):
     make_fresh_copy()
     if system(
@@ -35,6 +37,7 @@ def run_test(
         raise Exception("Failed to prep daemon")
     for func in file_mod_funcs:
         func()
+    time.sleep(change_delay)
     if system(f"pytest {TEMP_DIR}/test_fixture_changes.py::{test_name}"):
         if not expect_fail:
             raise Exception(f"Failed to run test {test_name}")
@@ -211,36 +214,64 @@ def remove_autouse_fixture_outside_of_conftest() -> None:
         f.writelines(new_lines)
 
 
-def main(do_not_reset_daemon: bool, use_watchman: bool) -> None:
+def main(do_not_reset_daemon: bool, use_watchman: bool, change_delay: float) -> None:
     if not do_not_reset_daemon:
         system("pytest --stop-daemon")
     if use_watchman:
         run_test("test_always_ran", use_watchman=True)
-    run_test("test_adding_fixture", add_fixture)
-    run_test("test_adding_fixture_async", add_async_fixture)
+    run_test("test_adding_fixture", add_fixture, change_delay=change_delay)
+    run_test("test_adding_fixture_async", add_async_fixture, change_delay=change_delay)
     run_test("test_removing_fixture")  # needed to trigger caching of fixture info
-    run_test("test_removing_fixture", remove_fixture, remove_use_of_fixture)
+    run_test(
+        "test_removing_fixture", remove_fixture, remove_use_of_fixture, change_delay=change_delay
+    )
     run_test(
         "test_removing_fixture_async",
         lambda: remove_fixture("# start of async removed fixture"),
         lambda: remove_use_of_fixture("async_removed_fixture"),
+        change_delay=change_delay,
     )
-    run_test("test_removing_should_fail", remove_fixture, expect_fail=True)
-    run_test("test_renaming_fixture", rename_fixture, rename_use_of_fixture)
-    run_test("test_renaming_should_fail", rename_fixture, expect_fail=True)
-    run_test("test_fixture_changes_dependency", modify_dependency_fixture_return)
-    run_test("test_fixture_has_dependency_renamed", modify_dependency_fixture_name)
-    run_test("test_fixture_has_dependency_removed", remove_dependency_fixture, expect_fail=True)
+    run_test(
+        "test_removing_should_fail", remove_fixture, expect_fail=True, change_delay=change_delay
+    )
+    run_test(
+        "test_renaming_fixture", rename_fixture, rename_use_of_fixture, change_delay=change_delay
+    )
+    run_test(
+        "test_renaming_should_fail", rename_fixture, expect_fail=True, change_delay=change_delay
+    )
+    run_test(
+        "test_fixture_changes_dependency",
+        modify_dependency_fixture_return,
+        change_delay=change_delay,
+    )
+    run_test(
+        "test_fixture_has_dependency_renamed",
+        modify_dependency_fixture_name,
+        change_delay=change_delay,
+    )
+    run_test(
+        "test_fixture_has_dependency_removed",
+        remove_dependency_fixture,
+        expect_fail=True,
+        change_delay=change_delay,
+    )
     run_test(
         "test_fixture_removes_dependency",
         remove_dependency_fixture,
         remove_dependency_fixture_usage,
+        change_delay=change_delay,
     )
-    run_test("test_fixture_outside_of_conftest", expect_fail=True)
-    run_test("test_fixture_outside_of_conftest", modify_fixture_outside_of_conftest)
+    run_test("test_fixture_outside_of_conftest", expect_fail=True, change_delay=change_delay)
+    run_test(
+        "test_fixture_outside_of_conftest",
+        modify_fixture_outside_of_conftest,
+        change_delay=change_delay,
+    )
     run_test(
         "test_autouse_fixture_outside_of_conftest_is_removed",
         remove_autouse_fixture_outside_of_conftest,
+        change_delay=change_delay,
     )
 
 
@@ -248,5 +279,6 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--do-not-reset-daemon", action="store_true")
     argparser.add_argument("--use-watchman", action="store_true")
+    argparser.add_argument("--change-delay", default=0.01, type=float)
     args = argparser.parse_args()
-    main(args.do_not_reset_daemon, args.use_watchman)
+    main(args.do_not_reset_daemon, args.use_watchman, args.change_delay)
