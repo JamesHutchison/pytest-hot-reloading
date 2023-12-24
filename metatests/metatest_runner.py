@@ -21,10 +21,16 @@ def make_fresh_copy():
         gitignore.write("*")
 
 
-def run_test(test_name: str, *file_mod_funcs: Callable, expect_fail: bool = False):
+def run_test(
+    test_name: str,
+    *file_mod_funcs: Callable,
+    expect_fail: bool = False,
+    use_watchman: bool = False,
+):
     make_fresh_copy()
     if system(
-        f"pytest --daemon-start-if-needed --daemon-use-watchman {TEMP_DIR}/test_fixture_changes.py::test_always_ran"
+        f"pytest --daemon-start-if-needed {'--daemon-use-watchman' if use_watchman else ''} "
+        f"{TEMP_DIR}/test_fixture_changes.py::test_always_ran"
     ):
         raise Exception("Failed to prep daemon")
     for func in file_mod_funcs:
@@ -205,9 +211,11 @@ def remove_autouse_fixture_outside_of_conftest() -> None:
         f.writelines(new_lines)
 
 
-def main(do_not_reset_daemon: bool) -> None:
+def main(do_not_reset_daemon: bool, use_watchman: bool) -> None:
     if not do_not_reset_daemon:
         system("pytest --stop-daemon")
+    if use_watchman:
+        run_test("test_always_ran", use_watchman=True)
     run_test("test_adding_fixture", add_fixture)
     run_test("test_adding_fixture_async", add_async_fixture)
     run_test("test_removing_fixture")  # needed to trigger caching of fixture info
@@ -239,5 +247,6 @@ def main(do_not_reset_daemon: bool) -> None:
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--do-not-reset-daemon", action="store_true")
+    argparser.add_argument("--use-watchman", action="store_true")
     args = argparser.parse_args()
-    main(args.do_not_reset_daemon)
+    main(args.do_not_reset_daemon, args.use_watchman)
