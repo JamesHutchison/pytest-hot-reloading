@@ -176,10 +176,12 @@ def monkey_patch_jurigged_function_definition():
                 new_sig = inspect.signature(func)
 
             # if the signature changes, clear the session cache
-            # otherwise pytest will use the old signature
-            # this is a more of a band-aid because the session cache
-            # could more intelligently update what was changed
-            # this band-aid fixes tests using stale fixture info
+            # otherwise pytest will use the old signature.
+            # This is a more of a band-aid because the session cache
+            # could be more intelligently updated based on what was changed.
+            # This band-aid fixes tests using stale fixture info, which
+            # can result in unpredictable behavior that requires
+            # restarting the daemon.
             if is_test:
                 if old_sig != new_sig:
                     signaler.signal_clear_cache()
