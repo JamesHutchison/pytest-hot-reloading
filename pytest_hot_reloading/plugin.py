@@ -156,7 +156,7 @@ def pytest_cmdline_main(config: Config) -> Optional[int]:
     return status_code  # status code 0
 
 
-fixture_names = set()
+fixture_names: set[str] = set()
 
 
 def monkey_patch_jurigged_function_definition():
@@ -316,7 +316,7 @@ def setup_jurigged(config: Config):
     )
 
 
-seen_files = set()
+seen_files: set[str] = set()
 
 
 def monkeypatch_fixture_marker(use_watchman: bool):
@@ -327,7 +327,7 @@ def monkeypatch_fixture_marker(use_watchman: bool):
     FixtureFunctionMarkerOrig = fixtures.FixtureFunctionMarker
 
     # FixtureFunctionMarker is marked as final
-    class FixtureFunctionMarkerNew(FixtureFunctionMarkerOrig):  # noqa  # type: ignore
+    class FixtureFunctionMarkerNew(FixtureFunctionMarkerOrig):  # type: ignore # noqa
         def __call__(self, func, *args, **kwargs):
             fixture_names.add(func.__name__)
 
