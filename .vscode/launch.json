@@ -13,7 +13,7 @@
             "args": [
                 "--daemon",
                 "--daemon-watch-globs",
-                "./pytest_hot_reloading/daemon*.py:./pytest_hot_reloading/plugin.py:./metatests/mtests/*.py",
+                "./pytest_hot_reloading/daemon*.py:./pytest_hot_reloading/plugin.py",
                 "--daemon-ignore-watch-globs",
                 "./.venv/*" // this is the default value
             ]
@@ -33,6 +33,16 @@
             "justMyCode": false
         },
         {
+            "name": "Run metatests",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/metatests/metatest_runner.py",
+            "justMyCode": false,
+            // "args": [
+            //     "--do-not-reset-daemon"
+            // ]
+        },
+        {
             "name": "Python: Debug Unit Tests",
             "type": "python",
             "request": "launch",
@@ -41,7 +51,7 @@
                 "debug-in-terminal"
             ],
             "console": "integratedTerminal",
-            "justMyCode": false,
+            "justMyCode": false
         }
     ]
 }

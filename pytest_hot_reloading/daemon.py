@@ -45,6 +45,7 @@ class PytestDaemon:
         pytest_name: str = "pytest",
         watch_globs: str | None = None,
         ignore_watch_globs: str | None = None,
+        do_not_autowatch_fixtures: bool | None = None,
     ) -> None:
         # start the daemon such that it will not close when the parent process closes
         if host == "localhost":
@@ -60,6 +61,8 @@ class PytestDaemon:
                 args += ["--daemon-watch-globs", watch_globs]
             if ignore_watch_globs:
                 args += ["--daemon-ignore-watch-globs", ignore_watch_globs]
+            if do_not_autowatch_fixtures:
+                args += ["--daemon-do-not-autowatch-fixtures"]
             subprocess.Popen(
                 args,
                 env=os.environ,

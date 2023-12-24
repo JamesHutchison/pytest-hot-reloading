@@ -1,4 +1,5 @@
 import pytest
+from used_by_conftest import *  # noqa
 
 
 @pytest.fixture()  # start of removed fixture
@@ -6,8 +7,6 @@ def removed_fixture():
     """
     This fixture is removed
     """
-    a = 1
-    pass
 
 
 @pytest.fixture()  # start of async removed fixture

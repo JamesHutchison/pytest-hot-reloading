@@ -21,12 +21,14 @@ class PytestClient:
         daemon_port: int = 4852,
         pytest_name: str = "pytest",
         start_daemon_if_needed: bool = False,
+        do_not_autowatch_fixtures: bool = False,
     ) -> None:
         self._socket = None
         self._daemon_host = daemon_host
         self._daemon_port = daemon_port
         self._pytest_name = pytest_name
         self._will_start_daemon_if_needed = start_daemon_if_needed
+        self._do_not_autowatch_fixtures = do_not_autowatch_fixtures
 
     def _get_server(self) -> xmlrpc.client.ServerProxy:
         server_url = f"http://{self._daemon_host}:{self._daemon_port}"
@@ -101,5 +103,8 @@ class PytestClient:
 
         # start the daemon
         PytestDaemon.start(
-            host=self._daemon_host, port=self._daemon_port, pytest_name=self._pytest_name
+            host=self._daemon_host,
+            port=self._daemon_port,
+            pytest_name=self._pytest_name,
+            do_not_autowatch_fixtures=self._do_not_autowatch_fixtures,
         )

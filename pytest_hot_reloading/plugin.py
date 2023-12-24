@@ -31,6 +31,7 @@ class EnvVariables(str, Enum):
     PYTEST_DAEMON_IGNORE_WATCH_GLOBS = "PYTEST_DAEMON_IGNORE_WATCH_GLOBS"
     PYTEST_DAEMON_START_IF_NEEDED = "PYTEST_DAEMON_START_IF_NEEDED"
     PYTEST_DAEMON_DISABLE = "PYTEST_DAEMON_DISABLE"
+    PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES = "PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES"
 
 
 def pytest_addoption(parser) -> None:
@@ -95,6 +96,18 @@ def pytest_addoption(parser) -> None:
             'you need add "python.experiments.optOutFrom": ["pythonTestAdapter"] to your config.'
         ),
     )
+    group.addoption(
+        "--daemon-do-not-autowatch-fixtures",
+        action="store_true",
+        default=(
+            os.getenv(EnvVariables.PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES, "False").lower()
+            in ("true", "1")
+        ),
+        help=(
+            "Do not automatically watch fixtures. "
+            "Typically this would be used if there's too many fixtures and the watch glob is used instead."
+        ),
+    )
 
 
 # list of pytest hooks
@@ -130,6 +143,9 @@ def pytest_cmdline_main(config: Config) -> Optional[int]:
     return status_code  # status code 0
 
 
+fixture_names = set()
+
+
 def monkey_patch_jurigged_function_definition():
     import jurigged.codetools as jurigged_codetools  # type: ignore
     import jurigged.utils as jurigged_utils  # type: ignore
@@ -151,15 +167,8 @@ def monkey_patch_jurigged_function_definition():
 
             If this isn't here, then deleted fixtures may still exist.
             """
-            definition = self.defn.codestring.splitlines()
-            line: str
-            for line in definition:
-                line = line.lstrip()
-                if line.startswith(("@pytest.fixture", "@fixture")):
-                    signaler.signal_clear_cache()
-                    break
-                if line.startswith("def"):
-                    break
+            if self.defn.name in fixture_names:
+                signaler.signal_clear_cache()
 
     class NewFunctionDefinition(OrigFunctionDefinition):
         def reevaluate(self, new_node, glb):
@@ -267,24 +276,72 @@ def monkeypatch_group_definition():
     jurigged_codetools.GroupDefinition.append = append
 
 
+def _jurigged_logger(x: str) -> None:
+    """
+    Jurigged behavior is to both print and log.
+
+    By default this creates duplicated output.
+
+    Pass in a no-op logger to prevent this.
+    """
+
+
 def setup_jurigged(config: Config):
-    def _jurigged_logger(x: str) -> None:
-        """
-        Jurigged behavior is to both print and log.
-
-        By default this creates duplicated output.
-
-        Pass in a no-op logger to prevent this.
-        """
-
     import jurigged
 
     monkey_patch_jurigged_function_definition()
     monkeypatch_group_definition()
+    if not config.option.daemon_do_not_autowatch_fixtures:
+        monkeypatch_fixture_marker()
+    else:
+        print("Not autowatching fixtures")
 
     pattern = _get_pattern_filters(config)
     # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
     jurigged.watch(pattern=pattern, logger=_jurigged_logger, poll=True)
+
+
+seen_files = set()
+
+
+def monkeypatch_fixture_marker():
+    import jurigged
+    import pytest
+    from _pytest import fixtures
+
+    FixtureFunctionMarkerOrig = fixtures.FixtureFunctionMarker
+
+    # FixtureFunctionMarker is marked as final
+    class FixtureFunctionMarkerNew(FixtureFunctionMarkerOrig):  # noqa  # type: ignore
+        def __call__(self, func, *args, **kwargs):
+            fixture_names.add(func.__name__)
+
+            return super().__call__(func, *args, **kwargs)
+
+    fixture_original = pytest.fixture
+
+    # doing a pure class only monkeypatch was breaking event_loop fixture
+    # so patching out fixture function to use new class
+    def _new_fixture(*args, **kwargs):
+        # get current file where this is called
+        frame = inspect.stack()[1]
+        module = inspect.getmodule(frame[0])
+        fixture_file = module.__file__
+
+        # add fixture file to watched files
+        if fixture_file not in seen_files:
+            seen_files.add(fixture_file)
+            jurigged.watch(pattern=fixture_file, logger=_jurigged_logger, poll=True)
+
+        fixtures.FixtureFunctionMarker = FixtureFunctionMarkerNew
+        try:
+            ret = fixture_original(*args, **kwargs)
+        finally:
+            fixtures.FixtureFunctionMarker = FixtureFunctionMarkerOrig
+
+        return ret
+
+    pytest.fixture = _new_fixture
 
 
 def _plugin_logic(config: Config) -> int:
@@ -313,6 +370,7 @@ def _plugin_logic(config: Config) -> int:
             daemon_port=daemon_port,
             pytest_name=pytest_name,
             start_daemon_if_needed=config.option.daemon_start_if_needed,
+            do_not_autowatch_fixtures=config.option.daemon_do_not_autowatch_fixtures,
         )
 
         if config.option.stop_daemon:
@@ -391,15 +449,7 @@ def pytest_collection_modifyitems(session: Session, config: Config, items: list[
     global seen_paths
     import jurigged
 
-    for conftest_list in config.pluginmanager._dirpath2confmods.values():
-        for conftest_module in conftest_list:
-            if conftest_path := conftest_module.__file__:
-                path = Path(conftest_path)
-                if path not in seen_paths:
-                    jurigged.watch(pattern=str(path))
-                    seen_paths.add(path)
-
     for item in items:
         if item.path and item.path not in seen_paths:
-            jurigged.watch(pattern=str(item.path))
+            jurigged.watch(pattern=str(item.path), logger=_jurigged_logger, poll=True)
             seen_paths.add(item.path)

@@ -90,3 +90,21 @@ def test_fixture_has_dependency_removed(dependency_removed_fixture):
 
     Should fail
     """
+
+
+def test_fixture_outside_of_conftest(fixture_outside_of_conftest):
+    """
+    This test uses a fixture that is modified outside of conftest.py
+
+    Should pass
+    """
+    assert fixture_outside_of_conftest == "modified value"
+
+
+def test_autouse_fixture_outside_of_conftest_is_removed(fixture_outside_of_conftest):
+    """
+    This test uses a fixture that is altered by an autouse fixture outside of context
+
+    Should pass
+    """
+    assert fixture_outside_of_conftest == "modified by autouse value"

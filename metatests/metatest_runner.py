@@ -1,4 +1,6 @@
+import argparse
 import shutil
+import time
 from os import system
 from pathlib import Path
 from typing import Callable
@@ -8,6 +10,7 @@ TEMP_DIR = METATESTS_DIR / "mtests"
 TEMPLATE_DIR = METATESTS_DIR / "template"
 MODIFIED_CONFTEST_FILE = TEMP_DIR / "conftest.py"
 MODIFIED_TEST_FILE = TEMP_DIR / "test_fixture_changes.py"
+MODIFIED_USED_BY_CONFTEST_FILE = TEMP_DIR / "used_by_conftest.py"
 
 
 def make_fresh_copy():
@@ -20,9 +23,6 @@ def make_fresh_copy():
 
 
 def run_test(test_name: str, *file_mod_funcs: Callable, expect_fail: bool = False):
-    # if expect_fail:
-    #     return
-    # system("pytest --stop-daemon")
     make_fresh_copy()
     if system(
         f"pytest --daemon-start-if-needed {TEMP_DIR}/test_fixture_changes.py::test_always_ran"
@@ -30,6 +30,8 @@ def run_test(test_name: str, *file_mod_funcs: Callable, expect_fail: bool = Fals
         raise Exception("Failed to prep daemon")
     for func in file_mod_funcs:
         func()
+    # give time for changes to get picked up
+    time.sleep(0.25)
     if system(f"pytest {TEMP_DIR}/test_fixture_changes.py::{test_name}"):
         if not expect_fail:
             raise Exception(f"Failed to run test {test_name}")
@@ -170,8 +172,45 @@ def remove_dependency_fixture_usage() -> None:
             )
 
 
-def main() -> None:
-    system("pytest --stop-daemon")
+def modify_fixture_outside_of_conftest() -> None:
+    # modify the dependency fixture in conftest.py
+    with MODIFIED_USED_BY_CONFTEST_FILE.open() as f:
+        lines = f.readlines()
+
+    # write new version of used_by_conftest.py
+    with MODIFIED_USED_BY_CONFTEST_FILE.open("w") as f:
+        for line in lines:
+            f.write(
+                line.replace(
+                    "return value_modified_by_autouse_fixture", "return 'modified value'"
+                )
+            )
+
+
+def remove_autouse_fixture_outside_of_conftest() -> None:
+    # remove the dependency fixture from conftest.py
+    with MODIFIED_USED_BY_CONFTEST_FILE.open() as f:
+        lines = f.readlines()
+
+    new_lines = []
+    is_autouse_fixture = False
+    for line in lines:
+        stripped_line = line.strip()
+        if stripped_line == "@pytest.fixture(autouse=True)":
+            is_autouse_fixture = True
+        elif not stripped_line:
+            is_autouse_fixture = False
+        if not is_autouse_fixture:
+            new_lines.append(line)
+
+    # write new version of conftest.py
+    with MODIFIED_USED_BY_CONFTEST_FILE.open("w") as f:
+        f.writelines(new_lines)
+
+
+def main(do_not_reset_daemon: bool) -> None:
+    if not do_not_reset_daemon:
+        system("pytest --stop-daemon")
     run_test("test_adding_fixture", add_fixture)
     run_test("test_adding_fixture_async", add_async_fixture)
     run_test("test_removing_fixture")  # needed to trigger caching of fixture info
@@ -192,7 +231,16 @@ def main() -> None:
         remove_dependency_fixture,
         remove_dependency_fixture_usage,
     )
+    run_test("test_fixture_outside_of_conftest", expect_fail=True)
+    run_test("test_fixture_outside_of_conftest", modify_fixture_outside_of_conftest)
+    run_test(
+        "test_autouse_fixture_outside_of_conftest_is_removed",
+        remove_autouse_fixture_outside_of_conftest,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--do-not-reset-daemon", action="store_true")
+    args = argparser.parse_args()
+    main(args.do_not_reset_daemon)
