@@ -28,6 +28,7 @@ def run_test(
     expect_fail: bool = False,
     use_watchman: bool = False,
     change_delay: float = 0.01,
+    retries: int = 0,
 ):
     make_fresh_copy()
     if system(
@@ -37,12 +38,19 @@ def run_test(
         raise Exception("Failed to prep daemon")
     for func in file_mod_funcs:
         func()
-    time.sleep(change_delay)
-    if system(f"pytest {TEMP_DIR}/test_fixture_changes.py::{test_name}"):
-        if not expect_fail:
-            raise Exception(f"Failed to run test {test_name}")
-    elif expect_fail:
-        raise Exception(f"Expected test {test_name} to fail but it passed")
+    for retry_num in range(retries + 1):
+        time.sleep(change_delay)
+        try:
+            if system(f"pytest {TEMP_DIR}/test_fixture_changes.py::{test_name}"):
+                if not expect_fail:
+                    raise Exception(f"Failed to run test {test_name}")
+            elif expect_fail:
+                raise Exception(f"Expected test {test_name} to fail but it passed")
+        except Exception:
+            if retry_num >= retries:
+                raise
+        else:
+            break
 
 
 def add_fixture():
@@ -214,7 +222,9 @@ def remove_autouse_fixture_outside_of_conftest() -> None:
         f.writelines(new_lines)
 
 
-def main(do_not_reset_daemon: bool, use_watchman: bool, change_delay: float) -> None:
+def main(
+    do_not_reset_daemon: bool, use_watchman: bool, change_delay: float, retries: int
+) -> None:
     if not do_not_reset_daemon:
         system("pytest --stop-daemon")
     if use_watchman:
@@ -280,5 +290,6 @@ if __name__ == "__main__":
     argparser.add_argument("--do-not-reset-daemon", action="store_true")
     argparser.add_argument("--use-watchman", action="store_true")
     argparser.add_argument("--change-delay", default=0.01, type=float)
+    argparser.add_argument("--retry", default=0, type=int)
     args = argparser.parse_args()
-    main(args.do_not_reset_daemon, args.use_watchman, args.change_delay)
+    main(args.do_not_reset_daemon, args.use_watchman, args.change_delay, args.retry)
