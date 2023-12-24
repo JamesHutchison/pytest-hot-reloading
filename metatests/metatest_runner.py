@@ -49,6 +49,8 @@ def run_test(
         except Exception:
             if retry_num >= retries:
                 raise
+            else:
+                print("Retrying failed metatest")
         else:
             break
 
@@ -229,59 +231,84 @@ def main(
         system("pytest --stop-daemon")
     if use_watchman:
         run_test("test_always_ran", use_watchman=True)
-    run_test("test_adding_fixture", add_fixture, change_delay=change_delay)
-    run_test("test_adding_fixture_async", add_async_fixture, change_delay=change_delay)
+    run_test("test_adding_fixture", add_fixture, change_delay=change_delay, retries=retries)
+    run_test(
+        "test_adding_fixture_async", add_async_fixture, change_delay=change_delay, retries=retries
+    )
     run_test("test_removing_fixture")  # needed to trigger caching of fixture info
     run_test(
-        "test_removing_fixture", remove_fixture, remove_use_of_fixture, change_delay=change_delay
+        "test_removing_fixture",
+        remove_fixture,
+        remove_use_of_fixture,
+        change_delay=change_delay,
+        retries=retries,
     )
     run_test(
         "test_removing_fixture_async",
         lambda: remove_fixture("# start of async removed fixture"),
         lambda: remove_use_of_fixture("async_removed_fixture"),
         change_delay=change_delay,
+        retries=retries,
     )
     run_test(
-        "test_removing_should_fail", remove_fixture, expect_fail=True, change_delay=change_delay
+        "test_removing_should_fail",
+        remove_fixture,
+        expect_fail=True,
+        change_delay=change_delay,
+        retries=retries,
     )
     run_test(
-        "test_renaming_fixture", rename_fixture, rename_use_of_fixture, change_delay=change_delay
+        "test_renaming_fixture",
+        rename_fixture,
+        rename_use_of_fixture,
+        change_delay=change_delay,
+        retries=retries,
     )
     run_test(
-        "test_renaming_should_fail", rename_fixture, expect_fail=True, change_delay=change_delay
+        "test_renaming_should_fail",
+        rename_fixture,
+        expect_fail=True,
+        change_delay=change_delay,
+        retries=retries,
     )
     run_test(
         "test_fixture_changes_dependency",
         modify_dependency_fixture_return,
         change_delay=change_delay,
+        retries=retries,
     )
     run_test(
         "test_fixture_has_dependency_renamed",
         modify_dependency_fixture_name,
         change_delay=change_delay,
+        retries=retries,
     )
     run_test(
         "test_fixture_has_dependency_removed",
         remove_dependency_fixture,
         expect_fail=True,
         change_delay=change_delay,
+        retries=retries,
     )
     run_test(
         "test_fixture_removes_dependency",
         remove_dependency_fixture,
         remove_dependency_fixture_usage,
         change_delay=change_delay,
+        retries=retries,
     )
     run_test("test_fixture_outside_of_conftest", expect_fail=True, change_delay=change_delay)
     run_test(
         "test_fixture_outside_of_conftest",
         modify_fixture_outside_of_conftest,
         change_delay=change_delay,
+        retries=retries,
     )
     run_test(
         "test_autouse_fixture_outside_of_conftest_is_removed",
         remove_autouse_fixture_outside_of_conftest,
         change_delay=change_delay,
+        retries=retries,
     )
 
 
