@@ -297,6 +297,7 @@ def _jurigged_logger(x: str) -> None:
 
     Pass in a no-op logger to prevent this.
     """
+    print(x)
 
 
 def setup_jurigged(config: Config):
