@@ -17,9 +17,13 @@ runs:
     shell: bash
   - name: Test with pytest
     run: |
-      poetry run pytest --daemon-start-if-needed
+      poetry run pytest --daemon-start-if-needed tests
     shell: bash
   - name: Rerun workaround tests to check for incompatibilities
     run: |
       poetry run pytest tests/workarounds
+    shell: bash
+  - name: Run metatests
+    run: |
+      poetry run python metatests/metatest_runner.py --retry 2
     shell: bash

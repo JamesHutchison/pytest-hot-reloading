@@ -155,6 +155,10 @@ Then enable automatically starting the daemon in your settings:
     - Disable the pytest plugin for this test run.
     - Default: `False`
     - Command line: `--daemon-disable`
+- `PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES`
+    - Disable automatically autowatching files containing fixtures
+    - Default: `False`
+    - Command line: `--daemon-do-not-autowatch-fixtures`
 
 ## Workarounds
 Libraries that use mutated globals may need a workaround to work with this plugin. The preferred

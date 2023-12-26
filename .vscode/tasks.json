@@ -4,7 +4,7 @@
         {
             "label": "Check",
             "type": "shell",
-            "command": "poetry run dmypy check pytest_hot_reloading tests && poetry run ruff pytest_hot_reloading tests",
+            "command": "poetry run dmypy check pytest_hot_reloading tests metatests && poetry run ruff pytest_hot_reloading tests metatests",
             "problemMatcher": []
         },
         {

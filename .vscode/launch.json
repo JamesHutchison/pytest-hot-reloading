@@ -33,6 +33,16 @@
             "justMyCode": false
         },
         {
+            "name": "Run metatests",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/metatests/metatest_runner.py",
+            "justMyCode": false,
+            // "args": [
+            //     "--do-not-reset-daemon"
+            // ]
+        },
+        {
             "name": "Python: Debug Unit Tests",
             "type": "python",
             "request": "launch",
@@ -41,7 +51,7 @@
                 "debug-in-terminal"
             ],
             "console": "integratedTerminal",
-            "justMyCode": false,
+            "justMyCode": false
         }
     ]
 }

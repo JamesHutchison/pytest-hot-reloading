@@ -3,6 +3,7 @@ Pytest Hot Reloading plugin
 """
 from __future__ import annotations
 
+import inspect
 import os
 import sys
 from enum import Enum
@@ -10,11 +11,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
 
 from pytest_hot_reloading.client import PytestClient
+from pytest_hot_reloading.jurigged_daemon_signalers import JuriggedDaemonSignaler
 
 # this is modified by the daemon so that the pytest_collection hooks does not run
 i_am_server = False
 
 seen_paths: set[Path] = set()
+signaler = JuriggedDaemonSignaler()
 
 if TYPE_CHECKING:
     from pytest import Config, Item, Parser, Session
@@ -28,6 +31,8 @@ class EnvVariables(str, Enum):
     PYTEST_DAEMON_IGNORE_WATCH_GLOBS = "PYTEST_DAEMON_IGNORE_WATCH_GLOBS"
     PYTEST_DAEMON_START_IF_NEEDED = "PYTEST_DAEMON_START_IF_NEEDED"
     PYTEST_DAEMON_DISABLE = "PYTEST_DAEMON_DISABLE"
+    PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES = "PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES"
+    PYTEST_DAEMON_USE_WATCHMAN = "PYTEST_DAEMON_USE_WATCHMAN"
 
 
 def pytest_addoption(parser) -> None:
@@ -92,6 +97,30 @@ def pytest_addoption(parser) -> None:
             'you need add "python.experiments.optOutFrom": ["pythonTestAdapter"] to your config.'
         ),
     )
+    group.addoption(
+        "--daemon-do-not-autowatch-fixtures",
+        action="store_true",
+        default=(
+            os.getenv(EnvVariables.PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES, "False").lower()
+            in ("true", "1")
+        ),
+        help=(
+            "Do not automatically watch fixtures. "
+            "Typically this would be used if there's too many fixtures and the watch glob is used instead."
+        ),
+    )
+    group.addoption(
+        "--daemon-use-watchman",
+        action="store_true",
+        default=(
+            os.getenv(EnvVariables.PYTEST_DAEMON_USE_WATCHMAN, "False").lower() in ("true", "1")
+        ),
+        help=(
+            "Use watchman instead of polling. "
+            "This reduces CPU usage, takes up open file handles, and improves responsiveness. "
+            "Some systems cannot reliably use this."
+        ),
+    )
 
 
 # list of pytest hooks
@@ -127,20 +156,62 @@ def pytest_cmdline_main(config: Config) -> Optional[int]:
     return status_code  # status code 0
 
 
+fixture_names: set[str] = set()
+
+
 def monkey_patch_jurigged_function_definition():
     import jurigged.codetools as jurigged_codetools  # type: ignore
     import jurigged.utils as jurigged_utils  # type: ignore
 
     OrigFunctionDefinition = jurigged_codetools.FunctionDefinition
+    OrigDeleteOperation = jurigged_codetools.DeleteOperation
 
     import ast
 
+    class NewDeleteOperation(OrigDeleteOperation):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+
+            self._signal_clear_cache_if_fixture()
+
+        def _signal_clear_cache_if_fixture(self) -> None:
+            """
+            Clear the cache if a fixture is deleted.
+
+            If this isn't here, then deleted fixtures may still exist.
+            """
+            if self.defn.name in fixture_names:
+                signaler.signal_clear_cache()
+
     class NewFunctionDefinition(OrigFunctionDefinition):
         def reevaluate(self, new_node, glb):
+            func = glb[new_node.name]
+            is_test = new_node.name.startswith("test_")
+            if is_test:
+                old_sig = inspect.signature(func)
+            else:
+                if new_node.name in fixture_names:
+                    # if a fixture is updated, then clear the session cache to avoid stale responses
+                    signaler.signal_clear_cache()
             # monkeypatch: The assertion rewrite is from pytest. Jurigged doesn't
             #              seem to have a way to add rewrite hooks
             new_node = self.apply_assertion_rewrite(new_node, glb)
             obj = super().reevaluate(new_node, glb)
+
+            if is_test:
+                new_sig = inspect.signature(func)
+
+            # if the signature changes, clear the session cache
+            # otherwise pytest will use the old signature.
+            # This is a more of a band-aid because the session cache
+            # could be more intelligently updated based on what was changed.
+            # This band-aid fixes tests using stale fixture info, which
+            # can result in unpredictable behavior that requires
+            # restarting the daemon.
+            if is_test:
+                if old_sig != new_sig:
+                    signaler.signal_clear_cache()
+
             return obj
 
         def apply_assertion_rewrite(self, ast_func, glb):
@@ -187,6 +258,7 @@ def monkey_patch_jurigged_function_definition():
 
     # monkey patch in new definition
     jurigged_codetools.FunctionDefinition = NewFunctionDefinition
+    jurigged_codetools.DeleteOperation = NewDeleteOperation
 
 
 def monkeypatch_group_definition():
@@ -221,24 +293,75 @@ def monkeypatch_group_definition():
     jurigged_codetools.GroupDefinition.append = append
 
 
+def _jurigged_logger(x: str) -> None:
+    """
+    Jurigged behavior is to both print and log.
+
+    By default this creates duplicated output.
+
+    Pass in a no-op logger to prevent this.
+    """
+    print(x)
+
+
 def setup_jurigged(config: Config):
-    def _jurigged_logger(x: str) -> None:
-        """
-        Jurigged behavior is to both print and log.
-
-        By default this creates duplicated output.
-
-        Pass in a no-op logger to prevent this.
-        """
-
     import jurigged
 
     monkey_patch_jurigged_function_definition()
     monkeypatch_group_definition()
+    if not config.option.daemon_do_not_autowatch_fixtures:
+        monkeypatch_fixture_marker(config.option.daemon_use_watchman)
+    else:
+        print("Not autowatching fixtures")
 
     pattern = _get_pattern_filters(config)
     # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
-    jurigged.watch(pattern=pattern, logger=_jurigged_logger, poll=True)
+    jurigged.watch(
+        pattern=pattern, logger=_jurigged_logger, poll=(not config.option.daemon_use_watchman)
+    )
+
+
+seen_files: set[str] = set()
+
+
+def monkeypatch_fixture_marker(use_watchman: bool):
+    import jurigged
+    import pytest
+    from _pytest import fixtures
+
+    FixtureFunctionMarkerOrig = fixtures.FixtureFunctionMarker
+
+    # FixtureFunctionMarker is marked as final
+    class FixtureFunctionMarkerNew(FixtureFunctionMarkerOrig):  # type: ignore # noqa
+        def __call__(self, func, *args, **kwargs):
+            fixture_names.add(func.__name__)
+
+            return super().__call__(func, *args, **kwargs)
+
+    fixture_original = pytest.fixture
+
+    # doing a pure class only monkeypatch was breaking event_loop fixture
+    # so patching out fixture function to use new class
+    def _new_fixture(*args, **kwargs):
+        # get current file where this is called
+        frame = inspect.stack()[1]
+        module = inspect.getmodule(frame[0])
+        fixture_file = module.__file__
+
+        # add fixture file to watched files
+        if fixture_file not in seen_files:
+            seen_files.add(fixture_file)
+            jurigged.watch(pattern=fixture_file, logger=_jurigged_logger, poll=(not use_watchman))
+
+        fixtures.FixtureFunctionMarker = FixtureFunctionMarkerNew
+        try:
+            ret = fixture_original(*args, **kwargs)
+        finally:
+            fixtures.FixtureFunctionMarker = FixtureFunctionMarkerOrig
+
+        return ret
+
+    pytest.fixture = _new_fixture
 
 
 def _plugin_logic(config: Config) -> int:
@@ -257,7 +380,7 @@ def _plugin_logic(config: Config) -> int:
 
         from pytest_hot_reloading.daemon import PytestDaemon
 
-        daemon = PytestDaemon(daemon_port=daemon_port)
+        daemon = PytestDaemon(daemon_port=daemon_port, signaler=signaler)
 
         daemon.run_forever()
         sys.exit(0)
@@ -267,6 +390,7 @@ def _plugin_logic(config: Config) -> int:
             daemon_port=daemon_port,
             pytest_name=pytest_name,
             start_daemon_if_needed=config.option.daemon_start_if_needed,
+            do_not_autowatch_fixtures=config.option.daemon_do_not_autowatch_fixtures,
         )
 
         if config.option.stop_daemon:
@@ -335,9 +459,9 @@ def _get_pattern_filters(config: Config) -> str | Callable[[str], bool]:
 
 def pytest_collection_modifyitems(session: Session, config: Config, items: list[Item]) -> None:
     """
-    This hooks is called by pytest after the collection phase.
+    This hook is called by pytest after the collection phase.
 
-    This adds tests to the watch list automatically.
+    This adds tests and conftests to the watch list automatically.
 
     The client should never get this far. This should only be
     used by the daemon.
@@ -347,5 +471,9 @@ def pytest_collection_modifyitems(session: Session, config: Config, items: list[
 
     for item in items:
         if item.path and item.path not in seen_paths:
-            jurigged.watch(pattern=str(item.path))
+            jurigged.watch(
+                pattern=str(item.path),
+                logger=_jurigged_logger,
+                poll=(not config.option.daemon_use_watchman),
+            )
             seen_paths.add(item.path)
