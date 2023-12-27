@@ -132,7 +132,7 @@ Then enable automatically starting the daemon in your settings:
 
 ## Arguments and Env Variables
 - `PYTEST_DAEMON_USE_WATCHMAN`
-    - Use watchman to check for file changes (recommended)
+    - Use watchman to check for file changes (recommended if your system supports it)
     - Default: `False`
     - Command line: `--daemon-use-watchman`
 - `PYTEST_DAEMON_PORT`
