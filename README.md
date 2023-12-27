@@ -156,7 +156,7 @@ Then enable automatically starting the daemon in your settings:
     - Default: `False`
     - Command line: `--daemon-disable`
 - `PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES`
-    - Disable automatically autowatching files containing fixtures
+    - Disable automatically watching files containing fixtures
     - Default: `False`
     - Command line: `--daemon-do-not-autowatch-fixtures`
 
@@ -200,7 +200,8 @@ the given module will not be executed.
 - Run out of a Github Codespace or similar dedicated external environment
 
 ## Known Issues
-- This is early alpha
+- This is alpha, although it's getting closer to where it can be called beta
+- If you run out of docker, prefer named volumes. Bind mounds and cached file systems can create random issues where changes aren't reflected.
 - The jurigged library is not perfect and sometimes it gets in a bad state
 - Some libraries were not written with hot reloading in mind, and will not work without some changes.
 - Many systems have conservative inotify limits. Consider bumping this up if you see errors about hitting the inotify limit.
