@@ -317,15 +317,23 @@ def setup_jurigged(config: Config):
     pattern = _get_pattern_filters(config)
     # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
     jurigged.watch(
-        pattern=pattern, logger=_jurigged_logger, poll=(not config.option.daemon_use_watchman)
+        pattern=pattern,
+        logger=_jurigged_logger,
+        poll=(not config.option.daemon_use_watchman),
     )
+
+
+def watch_file(path: Path | str) -> None:
+    from jurigged import registry
+    from jurigged.utils import glob_filter
+
+    registry.auto_register(filter=glob_filter(str(path)))
 
 
 seen_files: set[str] = set()
 
 
 def monkeypatch_fixture_marker(use_watchman: bool):
-    import jurigged
     import pytest
     from _pytest import fixtures
 
@@ -351,7 +359,7 @@ def monkeypatch_fixture_marker(use_watchman: bool):
         # add fixture file to watched files
         if fixture_file not in seen_files:
             seen_files.add(fixture_file)
-            jurigged.watch(pattern=fixture_file, logger=_jurigged_logger, poll=(not use_watchman))
+            watch_file(fixture_file)
 
         fixtures.FixtureFunctionMarker = FixtureFunctionMarkerNew
         try:
@@ -467,13 +475,8 @@ def pytest_collection_modifyitems(session: Session, config: Config, items: list[
     used by the daemon.
     """
     global seen_paths
-    import jurigged
 
     for item in items:
         if item.path and item.path not in seen_paths:
-            jurigged.watch(
-                pattern=str(item.path),
-                logger=_jurigged_logger,
-                poll=(not config.option.daemon_use_watchman),
-            )
+            watch_file(item.path)
             seen_paths.add(item.path)
