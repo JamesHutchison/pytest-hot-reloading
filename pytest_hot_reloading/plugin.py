@@ -334,7 +334,6 @@ seen_files: set[str] = set()
 
 
 def monkeypatch_fixture_marker(use_watchman: bool):
-    import jurigged
     import pytest
     from _pytest import fixtures
 
