@@ -202,7 +202,7 @@ the given module will not be executed.
         addopts = "-p pytest_asyncio.plugin -p megamock.plugins.pytest -p pytest_hot_reloading.plugin"
     ```
 - Run out of a Github Codespace or similar dedicated external environment
-- Prefer watchman, if your system supports works well with it. It uses less CPU. Enable it with the environment variable `PYTEST_DAEMON_USE_WATCHMAN=1`
+- Prefer watchman, if your system works well with it. It uses less CPU and can pick up changes faster. Enable it with the environment variable `PYTEST_DAEMON_USE_WATCHMAN=1`. It is only disabled by default for maximum compatibility.
 
 ## Known Issues
 - This is alpha, although it's getting closer to where it can be called beta
