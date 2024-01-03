@@ -1,7 +1,6 @@
 import argparse
 import os
 import shutil
-import tempfile
 import time
 from os import system
 from pathlib import Path
@@ -372,4 +371,3 @@ if __name__ == "__main__":
         Path(temp_dir),
     )
     runner.main()
-    pass
