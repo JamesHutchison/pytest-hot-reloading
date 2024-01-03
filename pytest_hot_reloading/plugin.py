@@ -185,10 +185,12 @@ def monkey_patch_jurigged_function_definition():
 
     class NewFunctionDefinition(OrigFunctionDefinition):
         def reevaluate(self, new_node, glb):
-            func = glb[new_node.name]
             is_test = new_node.name.startswith("test_")
             if is_test:
-                old_sig = inspect.signature(func)
+                if not hasattr(self.node, "args"):
+                    is_test = False
+                else:
+                    old_sig = [x.arg for x in self.node.args.args]
             else:
                 if new_node.name in fixture_names:
                     # if a fixture is updated, then clear the session cache to avoid stale responses
@@ -199,7 +201,7 @@ def monkey_patch_jurigged_function_definition():
             obj = super().reevaluate(new_node, glb)
 
             if is_test:
-                new_sig = inspect.signature(func)
+                new_sig = [x.arg for x in new_node.args.args]
 
             # if the signature changes, clear the session cache
             # otherwise pytest will use the old signature.
@@ -293,17 +295,6 @@ def monkeypatch_group_definition():
     jurigged_codetools.GroupDefinition.append = append
 
 
-def _jurigged_logger(x: str) -> None:
-    """
-    Jurigged behavior is to both print and log.
-
-    By default this creates duplicated output.
-
-    Pass in a no-op logger to prevent this.
-    """
-    print(x)
-
-
 def setup_jurigged(config: Config):
     import jurigged
 
@@ -318,7 +309,6 @@ def setup_jurigged(config: Config):
     # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
     jurigged.watch(
         pattern=pattern,
-        logger=_jurigged_logger,
         poll=(not config.option.daemon_use_watchman),
     )
 
@@ -380,8 +370,8 @@ def _plugin_logic(config: Config) -> int:
     """
     # if daemon is passed, then we are the daemon / server
     # if daemon is not passed, then we are the client
-    daemon_port = int(config.option.daemon_port)
-    if config.option.daemon:
+    daemon_port = int(config.option.daemon_port)  # --daemon-port
+    if config.option.daemon:  # --daemon
         # pytest prints out "collecting ...". The leading \r prevents that
         print("\rStarting daemon...")
         setup_jurigged(config)
@@ -393,15 +383,17 @@ def _plugin_logic(config: Config) -> int:
         daemon.run_forever()
         sys.exit(0)
     else:
-        pytest_name = config.option.pytest_name
+        pytest_name = config.option.pytest_name  # --pytest-name
         client = PytestClient(
             daemon_port=daemon_port,
             pytest_name=pytest_name,
-            start_daemon_if_needed=config.option.daemon_start_if_needed,
-            do_not_autowatch_fixtures=config.option.daemon_do_not_autowatch_fixtures,
+            start_daemon_if_needed=config.option.daemon_start_if_needed,  # --daemon-start-if-needed
+            do_not_autowatch_fixtures=config.option.daemon_do_not_autowatch_fixtures,  # --daemon-do-not-autowatch-fixtures
+            use_watchman=config.option.daemon_use_watchman,  # --daemon-use-watchman
+            additional_args=config.invocation_params.args,
         )
 
-        if config.option.stop_daemon:
+        if config.option.stop_daemon:  # --stop-daemon
             client.stop()
             return 0
 

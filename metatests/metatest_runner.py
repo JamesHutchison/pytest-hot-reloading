@@ -1,6 +1,6 @@
 import argparse
+import os
 import shutil
-import tempfile
 import time
 from os import system
 from pathlib import Path
@@ -27,14 +27,13 @@ class MetaTestRunner:
         self.modified_conftest_file = self.temp_dir / "conftest.py"
         self.modified_test_file = self.temp_dir / "test_fixture_changes.py"
         self.modified_used_by_conftest_file = self.temp_dir / "used_by_conftest.py"
+        self.modified_code_file = self.temp_dir / "file_changes.py"
 
     def make_fresh_copy(self):
         # delete the directory contents if it is not empty
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir)
         shutil.copytree(TEMPLATE_DIR, self.temp_dir)
-        with (self.temp_dir / ".gitignore").open("w") as gitignore:
-            gitignore.write("*")
 
     def run_test(
         self,
@@ -42,21 +41,23 @@ class MetaTestRunner:
         *file_mod_funcs: Callable,
         expect_fail: bool = False,
         use_watchman: bool = False,
-        change_delay: float = 0.01,
         retries: int = 0,
+        test_file: str = "test_fixture_changes.py",
     ):
         for retry_num in range(retries + 1):
             self.make_fresh_copy()
+            os.chdir(self.temp_dir)
             if system(
                 f"pytest -p pytest_hot_reloading.plugin --daemon-start-if-needed {'--daemon-use-watchman' if use_watchman else ''} "
+                f"--daemon-watch-globs '{self.temp_dir}/*.py' "
                 f"{self.temp_dir}/test_fixture_changes.py::test_always_ran"
             ):
                 raise Exception("Failed to prep daemon")
             for func in file_mod_funcs:
                 func()
-            time.sleep(change_delay + retry_num * 0.25)
+            time.sleep(self.change_delay + retry_num * 0.25)
             try:
-                if system(f"pytest {self.temp_dir}/test_fixture_changes.py::{test_name}"):
+                if system(f"pytest {self.temp_dir}/{test_file}::{test_name}"):
                     if not expect_fail:
                         raise Exception(f"Failed to run test {test_name}")
                 elif expect_fail:
@@ -231,6 +232,37 @@ async def async_added_fixture():
         with self.modified_used_by_conftest_file.open("w") as f:
             f.writelines(new_lines)
 
+    def modify_function_return_value(self) -> None:
+        print(self.modified_code_file)
+        # modify the function in file_changes.py
+        with self.modified_code_file.open() as f:
+            lines = f.readlines()
+
+        # write new version of file_changes.py
+        with self.modified_code_file.open("w") as f:
+            for line in lines:
+                f.write(line.replace('return "foo"', 'return "foo modified"'))
+
+    def modify_method_return_value(self) -> None:
+        # modify the method in file_changes.py
+        with self.modified_code_file.open() as f:
+            lines = f.readlines()
+
+        # write new version of file_changes.py
+        with self.modified_code_file.open("w") as f:
+            for line in lines:
+                f.write(line.replace('return "bar"', 'return "bar modified"'))
+
+    def modify_staticmethod_return_value(self) -> None:
+        # modify the method in file_changes.py
+        with self.modified_code_file.open() as f:
+            lines = f.readlines()
+
+        # write new version of file_changes.py
+        with self.modified_code_file.open("w") as f:
+            for line in lines:
+                f.write(line.replace('return "moo"', 'return "moo modified"'))
+
     def main(self) -> None:
         if not self.do_not_reset_daemon:
             system("pytest --stop-daemon")
@@ -266,6 +298,11 @@ async def async_added_fixture():
             self.rename_use_of_fixture,
         )
         self.run_test(
+            "TestClass::test_method_fixture_change",
+            self.rename_fixture,
+            self.rename_use_of_fixture,
+        )
+        self.run_test(
             "test_renaming_should_fail",
             self.rename_fixture,
             expect_fail=True,
@@ -297,6 +334,21 @@ async def async_added_fixture():
             "test_autouse_fixture_outside_of_conftest_is_removed",
             self.remove_autouse_fixture_outside_of_conftest,
         )
+        self.run_test(
+            "test_file_function_change",
+            self.modify_function_return_value,
+            test_file="test_file_changes.py",
+        )
+        self.run_test(
+            "test_class_method_change",
+            self.modify_method_return_value,
+            test_file="test_file_changes.py",
+        )
+        self.run_test(
+            "test_staticmethod_change",
+            self.modify_staticmethod_return_value,
+            test_file="test_file_changes.py",
+        )
 
 
 if __name__ == "__main__":
@@ -305,14 +357,17 @@ if __name__ == "__main__":
     argparser.add_argument("--use-watchman", action="store_true")
     argparser.add_argument("--change-delay", default=0.01, type=float)
     argparser.add_argument("--retry", default=0, type=int)
+    argparser.add_argument("--temp-dir", default="/tmp/_metatests")
     args = argparser.parse_args()
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        runner = MetaTestRunner(
-            args.do_not_reset_daemon,
-            args.use_watchman,
-            args.change_delay,
-            args.retry,
-            Path(temp_dir),
-        )
-        runner.main()
+    temp_dir = Path(args.temp_dir)
+    if not temp_dir.exists():
+        temp_dir.mkdir()
+    runner = MetaTestRunner(
+        args.do_not_reset_daemon,
+        args.use_watchman,
+        args.change_delay,
+        args.retry,
+        Path(temp_dir),
+    )
+    runner.main()

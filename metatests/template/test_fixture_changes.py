@@ -108,3 +108,12 @@ def test_autouse_fixture_outside_of_conftest_is_removed(fixture_outside_of_conft
     Should pass
     """
     assert fixture_outside_of_conftest == "modified by autouse value"
+
+
+class TestClass:
+    def test_method_fixture_change(self, renamed_fixture):
+        """
+        This test uses a fixture that is renamed
+
+        Should pass
+        """
