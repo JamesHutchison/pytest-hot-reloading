@@ -5,7 +5,7 @@ import sys
 import time
 import xmlrpc.client
 from pathlib import Path
-from typing import cast
+from typing import Sequence, cast
 
 
 class PytestClient:
@@ -25,6 +25,7 @@ class PytestClient:
         start_daemon_if_needed: bool = False,
         do_not_autowatch_fixtures: bool = False,
         use_watchman: bool = False,
+        additional_args: Sequence[str] = [],
     ) -> None:
         self._socket = None
         self._daemon_host = daemon_host
@@ -33,6 +34,7 @@ class PytestClient:
         self._will_start_daemon_if_needed = start_daemon_if_needed
         self._do_not_autowatch_fixtures = do_not_autowatch_fixtures
         self._use_watchman = use_watchman
+        self._additional_args = additional_args
 
     def _get_server(self) -> xmlrpc.client.ServerProxy:
         server_url = f"http://{self._daemon_host}:{self._daemon_port}"
@@ -112,4 +114,5 @@ class PytestClient:
             pytest_name=self._pytest_name,
             do_not_autowatch_fixtures=self._do_not_autowatch_fixtures,
             use_watchman=self._use_watchman,
+            additional_args=self._additional_args,
         )

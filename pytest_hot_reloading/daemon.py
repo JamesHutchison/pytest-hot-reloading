@@ -1,5 +1,6 @@
 import copy
 import json
+import logging
 import os
 import re
 import socket
@@ -7,9 +8,10 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 from pathlib import Path
 from threading import Thread
-from typing import Counter, Generator
+from typing import Counter, Generator, Sequence
 from xmlrpc.server import SimpleXMLRPCServer
 
 import pytest
@@ -47,6 +49,7 @@ class PytestDaemon:
         ignore_watch_globs: str | None = None,
         do_not_autowatch_fixtures: bool | None = None,
         use_watchman: bool | None = None,
+        additional_args: Sequence[str] | None = None,
     ) -> None:
         # start the daemon such that it will not close when the parent process closes
         if host == "localhost":
@@ -67,7 +70,7 @@ class PytestDaemon:
             if use_watchman:
                 args += ["--daemon-use-watchman"]
             subprocess.Popen(
-                args,
+                args + list(additional_args or []),
                 env=os.environ,
                 cwd=os.getcwd(),
             )
@@ -87,7 +90,7 @@ class PytestDaemon:
     def wait_to_be_ready(host: str = "localhost", port: int = 4852) -> None:
         # poll the connection to the daemon using sockets
         # and return when it is ready
-        for _ in range(1000):
+        for _ in range(100):
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((host, port))
@@ -134,86 +137,90 @@ class PytestDaemon:
             raise Exception(f"Port {self._daemon_port} is already in use")
 
     def run_pytest(self, cwd: str, env_json: str, sys_path: list[str], args: list[str]) -> dict:
-        # run pytest using command line args
-        # run the pytest main logic
-
-        in_progress_workarounds = self._workaround_library_issues_pre()
-
-        import pytest_hot_reloading.plugin as plugin
-
-        # indicate to the plugin to NOT run custom pytest collect logic
-        plugin.i_am_server = True
-
-        # capture stdout and stderr
-        # and return the output
-        import io
-
-        stdout = io.StringIO()
-        stderr = io.StringIO()
-
-        # backup originals
-        stdout_bak = sys.stdout
-        stderr_bak = sys.stderr
-
-        sys.stdout = stdout
-        sys.stderr = stderr
-
-        if self._signaler.receive_clear_cache_signal():
-            session_item_cache.clear()
-
-        import _pytest.main
-
-        # monkeypatch in the main that does test collection caching
-        orig_main = _pytest.main._main
-        _pytest.main._main = _pytest_main
-
-        # store current working directory
-        prev_cwd = os.getcwd()
-        # switch to client working directory
-        os.chdir(cwd)
-
-        # copy the environment
-        env_old = os.environ.copy()
-        # switch to client environment
-        new_env = json.loads(env_json)
-        os.environ.update(new_env)
-
-        # copy sys.path
-        sys_path_old = sys.path
-        # switch to client path
-        sys.path = sys_path
-
         try:
-            # args must omit the calling program
-            status_code = pytest.main(["--color=yes"] + args)
-        finally:
-            os.chdir(prev_cwd)
-            self._workaround_library_issues_post(in_progress_workarounds)
+            # run pytest using command line args
+            # run the pytest main logic
+            in_progress_workarounds = self._workaround_library_issues_pre()
 
-            # restore sys.path
-            sys.path = sys_path_old
+            import pytest_hot_reloading.plugin as plugin
 
-            # restore environment
-            os.environ.update(env_old)
+            # indicate to the plugin to NOT run custom pytest collect logic
+            plugin.i_am_server = True
 
-            # restore originals
-            _pytest.main._main = orig_main
+            # capture stdout and stderr
+            # and return the output
+            import io
 
-            sys.stdout = stdout_bak
-            sys.stderr = stderr_bak
+            stdout = io.StringIO()
+            stderr = io.StringIO()
 
-            stdout.seek(0)
-            stderr.seek(0)
-            stdout_str = stdout.read()
-            stderr_str = stderr.read()
+            # backup originals
+            stdout_bak = sys.stdout
+            stderr_bak = sys.stderr
 
-            print(stdout_str, file=sys.stdout)
-            print(stderr_str, file=sys.stderr)
-        return {
-            "stdout": self._remove_ansi_escape(stdout_str).encode("utf-8"),
-            "stderr": self._remove_ansi_escape(stderr_str).encode("utf-8"),
-            "status_code": int(status_code),
-        }
+            sys.stdout = stdout
+            sys.stderr = stderr
+
+            if self._signaler.receive_clear_cache_signal():
+                session_item_cache.clear()
+
+            import _pytest.main
+
+            # monkeypatch in the main that does test collection caching
+            orig_main = _pytest.main._main
+            _pytest.main._main = _pytest_main
+
+            # switch to client working directory
+            # do NOT store and restore previous because it might disappear and create errors
+            os.chdir(cwd)
+
+            # copy the environment
+            env_old = os.environ.copy()
+            # switch to client environment
+            new_env = json.loads(env_json)
+            os.environ.update(new_env)
+
+            # copy sys.path
+            sys_path_old = sys.path
+            # switch to client path
+            sys.path = sys_path
+
+            try:
+                # args must omit the calling program
+                status_code = pytest.main(["--color=yes"] + args)
+            finally:
+                self._workaround_library_issues_post(in_progress_workarounds)
+
+                # restore sys.path
+                sys.path = sys_path_old
+
+                # restore environment
+                os.environ.update(env_old)
+
+                # restore originals
+                _pytest.main._main = orig_main
+
+                sys.stdout = stdout_bak
+                sys.stderr = stderr_bak
+
+                stdout.seek(0)
+                stderr.seek(0)
+                stdout_str = stdout.read()
+                stderr_str = stderr.read()
+
+                print(stdout_str, file=sys.stdout)
+                print(stderr_str, file=sys.stderr)
+            return {
+                "stdout": self._remove_ansi_escape(stdout_str).encode("utf-8"),
+                "stderr": self._remove_ansi_escape(stderr_str).encode("utf-8"),
+                "status_code": int(status_code),
+            }
+        except Exception:
+            return {
+                "stdout": b"",
+                "stderr": traceback.format_exc().encode("utf-8"),
+                "status_code": -1,
+            }
 
     def _remove_ansi_escape(self, s: str) -> str:
         return re.sub(r"\x1b(\[.*?[@-~]|\].*?(\x07|\x1b\\))", "", s, flags=re.MULTILINE)
