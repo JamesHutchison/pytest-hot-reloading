@@ -66,6 +66,15 @@ def vscode_pytest_workaround() -> None:
     vscode_pytest.collected_tests_so_far = SetWithAppendRemove()
 
 
+@register_workaround("sqlalchemy")
+def sqlalchemy_cleanup_workaround() -> None:
+    from sqlalchemy import orm
+
+    yield
+
+    orm.close_all_sessions()
+
+
 def run_workarounds_pre() -> list[Generator]:
     in_progress_workarounds = []
     for module_name, workaround in workarounds:
