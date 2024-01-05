@@ -57,9 +57,13 @@ class MetaTestRunner:
                 func()
             time.sleep(self.change_delay + retry_num * 0.25)
             try:
-                if system(f"pytest {self.temp_dir}/{test_file}::{test_name}"):
+                status_code = system(f"pytest {self.temp_dir}/{test_file}::{test_name}")
+                print(f"Got status code: {status_code}")
+                if status_code:
                     if not expect_fail:
                         raise Exception(f"Failed to run test {test_name}")
+                    else:
+                        print("Failure was expected")
                 elif expect_fail:
                     raise Exception(f"Expected test {test_name} to fail but it passed")
             except Exception:

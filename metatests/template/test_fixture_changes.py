@@ -96,7 +96,8 @@ def test_fixture_outside_of_conftest(fixture_outside_of_conftest):
     """
     This test uses a fixture that is modified outside of conftest.py
 
-    Should pass
+    This is ran twice. The first time it should fail because the fixture is never modified.
+    Second time it should pass because the fixture is modified.
     """
     assert fixture_outside_of_conftest == "modified value"
 

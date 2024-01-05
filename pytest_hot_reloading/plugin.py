@@ -306,11 +306,15 @@ def setup_jurigged(config: Config):
         print("Not autowatching fixtures")
 
     pattern = _get_pattern_filters(config)
-    # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
-    jurigged.watch(
-        pattern=pattern,
-        poll=(not config.option.daemon_use_watchman),
+    watcher = jurigged.watch(
+        pattern=pattern, poll=(not config.option.daemon_use_watchman), autostart=False
     )
+
+    from .watchfiles_observer import WatchfilesObserver
+
+    watcher.observer = WatchfilesObserver(watcher)
+    watcher.start()
+    return watcher
 
 
 def watch_file(path: Path | str) -> None:
@@ -374,13 +378,18 @@ def _plugin_logic(config: Config) -> int:
     if config.option.daemon:  # --daemon
         # pytest prints out "collecting ...". The leading \r prevents that
         print("\rStarting daemon...")
-        setup_jurigged(config)
+        watcher = setup_jurigged(config)
 
         from pytest_hot_reloading.daemon import PytestDaemon
 
         daemon = PytestDaemon(daemon_port=daemon_port, signaler=signaler)
 
-        daemon.run_forever()
+        try:
+            daemon.run_forever()
+        except KeyboardInterrupt:
+            daemon.stop()
+        finally:
+            watcher.join()
         sys.exit(0)
     else:
         pytest_name = config.option.pytest_name  # --pytest-name
