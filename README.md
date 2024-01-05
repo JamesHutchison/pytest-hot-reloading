@@ -104,8 +104,11 @@ This can easily be done in VS Code with the following launch profile:
         },
 ```
 
-The only reason you would need to limit the watched files is because the jurigged library
-opens every file it watches, so it can exhaust the open file limit if you have a lot of files.
+The daemon can be configured to use either watchman or polling to detect file changes.
+In my experience, watchman, running on docker on your system, frequently stops detecting changes without warning.
+The default behavior is to use polling, which is slower and has higher CPU usage, but is more likely to work.
+You can improve the behavior by limiting what files are watched via the watch globs. When using watchman,
+a file is opened for every file watched, so you will exhaust your open file limit if you watch too many.
 
 If the daemon is already running and you run pytest with `--daemon`, then the old one will be stopped
 and a new one will be started. Note that `pytest --daemon` is NOT how you run tests. It is only used to start
