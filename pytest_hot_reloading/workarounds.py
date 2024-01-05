@@ -44,6 +44,28 @@ def pytest_django_tox_workaround() -> None:
     fixtures._set_suffix_to_test_databases = lambda suffix: None
 
 
+@register_workaround("vscode_pytest")
+def vscode_pytest_workaround() -> None:
+    """
+    VS Code seems to keep track of collected tests and does a check to ensure
+    they were not already collected before returning them.
+
+    Also, it uses a list when all it does is an existence check, so this swaps
+    the list for a set with `append`.
+    """
+
+    import vscode_pytest  # type: ignore
+
+    class SetWithAppendRemove(set):
+        def append(self, val) -> None:
+            self.add(val)
+
+        def remove(self, val) -> None:
+            self.remove(val)
+
+    vscode_pytest.collected_tests_so_far = SetWithAppendRemove()
+
+
 def run_workarounds_pre() -> list[Generator]:
     in_progress_workarounds = []
     for module_name, workaround in workarounds:
