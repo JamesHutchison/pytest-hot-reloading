@@ -367,15 +367,15 @@ def _pytest_main(config: pytest.Config, session: pytest.Session):
     else:
         print("Pytest Daemon: Using cached collection")
         # Assign the prior test items (tests to run) and config to the current session
-        session.items = items  # type: ignore
+        session.items = tuple(best_effort_copy(x) for x in items)  # type: ignore
         num_tests_collected = len(items)
         session.config = config
-        for i in items:
+        for i in session.items:
             # Items have references to the config and the session
             i.config = config
             i.session = session
-            if i._request:
-                i._request._pyfuncitem = i
+            if i._request:  # type: ignore
+                i._request._pyfuncitem = i  # type: ignore
     config.hook.pytest_runtestloop(session=session)
     prior_sessions.add(session)
 
