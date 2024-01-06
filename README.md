@@ -104,11 +104,9 @@ This can easily be done in VS Code with the following launch profile:
         },
 ```
 
-The daemon can be configured to use either watchman or polling to detect file changes.
-In my experience, watchman, running on docker on your system, frequently stops detecting changes without warning.
-The default behavior is to use polling, which is slower and has higher CPU usage, but is more likely to work.
-You can improve the behavior by limiting what files are watched via the watch globs. When using watchman,
-a file is opened for every file watched, so you will exhaust your open file limit if you watch too many.
+The daemon can be configured to use either file system polling or OS-based polling.
+The polling behavior is used by default and has higher compatibility. For example, if you're using
+Docker for Windows with WSL2, you're going to have a bad time with inotify.
 
 If the daemon is already running and you run pytest with `--daemon`, then the old one will be stopped
 and a new one will be started. Note that `pytest --daemon` is NOT how you run tests. It is only used to start
@@ -134,10 +132,15 @@ Then enable automatically starting the daemon in your settings:
 ```
 
 ## Arguments and Env Variables
-- `PYTEST_DAEMON_USE_WATCHMAN`
-    - Use watchman to check for file changes (recommended if your system supports it)
+- `PYTEST_DAEMON_USE_OS_EVENTS`
+    - Instead of polling the file system, use OS events such as inotify to check for file changes (recommended if your system supports it)
     - Default: `False`
-    - Command line: `--daemon-use-watchman`
+    - Command line: `--daemon-use-os-events`
+- `PYTEST_DAEMON_POLL_THROTTLE`
+    - A multipler for how aggressive the daemon does file system polling. This is not used if OS events are used.
+    - 2.0 = twice as slow, less CPU usage
+    - Default: `1.0`
+    - Command line: `--daemon-poll-throttle`
 - `PYTEST_DAEMON_PORT`
     - The port the daemon listens on.
     - Default: `4852`.
@@ -205,7 +208,7 @@ the given module will not be executed.
         addopts = "-p pytest_asyncio.plugin -p megamock.plugins.pytest -p pytest_hot_reloading.plugin"
     ```
 - Run out of a Github Codespace or similar dedicated external environment
-- Prefer watchman, if your system works well with it. It uses less CPU and can pick up changes faster. Enable it with the environment variable `PYTEST_DAEMON_USE_WATCHMAN=1`. It is only disabled by default for maximum compatibility.
+- Prefer using OS events, if your system works well with it. It uses less CPU and can pick up changes faster. Enable it with the environment variable `PYTEST_DAEMON_USE_OS_EVENTS=1`. It is only disabled by default for maximum compatibility.
 
 ## Known Issues
 - This is alpha, although it's getting closer to where it can be called beta

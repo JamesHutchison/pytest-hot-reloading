@@ -14,13 +14,13 @@ class MetaTestRunner:
     def __init__(
         self,
         do_not_reset_daemon: bool,
-        use_watchman: bool,
+        use_os_events: bool,
         change_delay: float,
         retries: int,
         temp_dir: Path,
     ) -> None:
         self.do_not_reset_daemon = do_not_reset_daemon
-        self.use_watchman = use_watchman
+        self.use_os_events = use_os_events
         self.change_delay = change_delay
         self.retries = retries
         self.temp_dir = temp_dir
@@ -40,7 +40,7 @@ class MetaTestRunner:
         test_name: str,
         *file_mod_funcs: Callable,
         expect_fail: bool = False,
-        use_watchman: bool = False,
+        use_os_events: bool = False,
         retries: int = 0,
         test_file: str = "test_fixture_changes.py",
     ):
@@ -48,7 +48,7 @@ class MetaTestRunner:
             self.make_fresh_copy()
             os.chdir(self.temp_dir)
             if system(
-                f"pytest -p pytest_hot_reloading.plugin --daemon-start-if-needed {'--daemon-use-watchman' if use_watchman else ''} "
+                f"pytest -p pytest_hot_reloading.plugin --daemon-start-if-needed {'--daemon-use-os-events' if use_os_events else ''} "
                 f"--daemon-watch-globs '{self.temp_dir}/*.py' "
                 f"{self.temp_dir}/test_fixture_changes.py::test_always_ran"
             ):
@@ -266,8 +266,8 @@ async def async_added_fixture():
     def main(self) -> None:
         if not self.do_not_reset_daemon:
             system("pytest --stop-daemon")
-        if self.use_watchman:
-            self.run_test("test_always_ran", use_watchman=True)
+        if self.use_os_events:
+            self.run_test("test_always_ran", use_os_events=True)
         self.run_test(
             "test_adding_fixture",
             self.add_fixture,
@@ -354,7 +354,7 @@ async def async_added_fixture():
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--do-not-reset-daemon", action="store_true")
-    argparser.add_argument("--use-watchman", action="store_true")
+    argparser.add_argument("--use-os-events", action="store_true")
     argparser.add_argument("--change-delay", default=0.01, type=float)
     argparser.add_argument("--retry", default=0, type=int)
     argparser.add_argument("--temp-dir", default="/tmp/_metatests")
@@ -365,7 +365,7 @@ if __name__ == "__main__":
         temp_dir.mkdir()
     runner = MetaTestRunner(
         args.do_not_reset_daemon,
-        args.use_watchman,
+        args.use_os_events,
         args.change_delay,
         args.retry,
         Path(temp_dir),
