@@ -67,8 +67,8 @@ def vscode_pytest_workaround() -> None:
 
 
 @register_workaround("sqlalchemy")
-def sqlalchemy_cleanup_workaround() -> None:
-    from sqlalchemy import orm
+def sqlalchemy_cleanup_workaround() -> Generator:
+    from sqlalchemy import orm  # type: ignore
 
     yield
 
