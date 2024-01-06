@@ -6,6 +6,7 @@ from __future__ import annotations
 import inspect
 import os
 import sys
+import time
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
@@ -32,7 +33,8 @@ class EnvVariables(str, Enum):
     PYTEST_DAEMON_START_IF_NEEDED = "PYTEST_DAEMON_START_IF_NEEDED"
     PYTEST_DAEMON_DISABLE = "PYTEST_DAEMON_DISABLE"
     PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES = "PYTEST_DAEMON_DO_NOT_AUTOWATCH_FIXTURES"
-    PYTEST_DAEMON_USE_WATCHMAN = "PYTEST_DAEMON_USE_WATCHMAN"
+    PYTEST_DAEMON_USE_OS_EVENTS = "PYTEST_DAEMON_USE_OS_EVENTS"
+    PYTEST_DAEMON_POLL_THROTTLE = "PYTEST_DAEMON_POLL_THROTTLE"
 
 
 def pytest_addoption(parser) -> None:
@@ -110,15 +112,23 @@ def pytest_addoption(parser) -> None:
         ),
     )
     group.addoption(
-        "--daemon-use-watchman",
+        "--daemon-use-os-events",
         action="store_true",
         default=(
-            os.getenv(EnvVariables.PYTEST_DAEMON_USE_WATCHMAN, "False").lower() in ("true", "1")
+            os.getenv(EnvVariables.PYTEST_DAEMON_USE_OS_EVENTS, "False").lower() in ("true", "1")
         ),
         help=(
-            "Use watchman instead of polling. "
+            "Use OS events such as inotify instead of polling. "
             "This reduces CPU usage, takes up open file handles, and improves responsiveness. "
             "Some systems cannot reliably use this."
+        ),
+    )
+
+    group.addoption(
+        "--daemon-poll-throttle",
+        default=(os.getenv(EnvVariables.PYTEST_DAEMON_POLL_THROTTLE, "1")),
+        help=(
+            "The throttle for polling, as a float multiplier. Higher numbers are slower but tax the CPU less."
         ),
     )
 
@@ -301,15 +311,37 @@ def setup_jurigged(config: Config):
     monkey_patch_jurigged_function_definition()
     monkeypatch_group_definition()
     if not config.option.daemon_do_not_autowatch_fixtures:
-        monkeypatch_fixture_marker(config.option.daemon_use_watchman)
+        monkeypatch_fixture_marker(config.option.daemon_use_os_events)
     else:
         print("Not autowatching fixtures")
 
     pattern = _get_pattern_filters(config)
-    # TODO: intelligently use poll versus watchman (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
+    # TODO: intelligently use poll (https://github.com/JamesHutchison/pytest-hot-reloading/issues/16)
+
+    poll_throttle = float(config.option.daemon_poll_throttle)
+
+    from watchdog.observers.polling import PollingObserverVFS
+
+    class NewPollingObserverVFS(PollingObserverVFS):
+        def __init__(self, stat, listdir, polling_interval=2) -> None:
+            def lagged_listdir(*args, **kwargs):
+                time.sleep(0.02 * poll_throttle)  # give CPU a break!
+                return listdir(*args, **kwargs)
+
+            super().__init__(stat, lagged_listdir, polling_interval * poll_throttle)
+
+    jurigged.live.PollingObserverVFS = NewPollingObserverVFS
+
+    poll: bool | float
+
+    if config.option.daemon_use_os_events:
+        poll = False
+    else:
+        poll = 2  # seconds
+
     jurigged.watch(
         pattern=pattern,
-        poll=(not config.option.daemon_use_watchman),
+        poll=poll,
     )
 
 
@@ -323,7 +355,7 @@ def watch_file(path: Path | str) -> None:
 seen_files: set[str] = set()
 
 
-def monkeypatch_fixture_marker(use_watchman: bool):
+def monkeypatch_fixture_marker(use_os_events: bool):
     import pytest
     from _pytest import fixtures
 
@@ -389,7 +421,8 @@ def _plugin_logic(config: Config) -> int:
             pytest_name=pytest_name,
             start_daemon_if_needed=config.option.daemon_start_if_needed,  # --daemon-start-if-needed
             do_not_autowatch_fixtures=config.option.daemon_do_not_autowatch_fixtures,  # --daemon-do-not-autowatch-fixtures
-            use_watchman=config.option.daemon_use_watchman,  # --daemon-use-watchman
+            use_os_events=config.option.daemon_use_os_events,  # --daemon-use-os-events
+            poll_throttle=config.option.daemon_poll_throttle,  # --daemon-poll-throttle
             additional_args=config.invocation_params.args,
         )
 

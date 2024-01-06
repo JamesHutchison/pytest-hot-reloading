@@ -39,7 +39,7 @@
             "program": "${workspaceFolder}/metatests/metatest_runner.py",
             "justMyCode": false,
             "args": [
-                "--use-watchman"
+                "--use-os-events"
             ]
             // "args": [
             //     "--do-not-reset-daemon"

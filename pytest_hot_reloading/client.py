@@ -15,7 +15,7 @@ class PytestClient:
     _pytest_name: str
     _will_start_daemon_if_needed: bool
     _do_not_autowatch_fixtures: bool
-    _use_watchman: bool
+    _use_os_events: bool
 
     def __init__(
         self,
@@ -24,7 +24,8 @@ class PytestClient:
         pytest_name: str = "pytest",
         start_daemon_if_needed: bool = False,
         do_not_autowatch_fixtures: bool = False,
-        use_watchman: bool = False,
+        use_os_events: bool = False,
+        poll_throttle: float = 1.0,
         additional_args: Sequence[str] = [],
     ) -> None:
         self._socket = None
@@ -33,8 +34,9 @@ class PytestClient:
         self._pytest_name = pytest_name
         self._will_start_daemon_if_needed = start_daemon_if_needed
         self._do_not_autowatch_fixtures = do_not_autowatch_fixtures
-        self._use_watchman = use_watchman
+        self._use_os_events = use_os_events
         self._additional_args = additional_args
+        self._poll_throttle = poll_throttle
 
     def _get_server(self) -> xmlrpc.client.ServerProxy:
         server_url = f"http://{self._daemon_host}:{self._daemon_port}"
@@ -113,6 +115,7 @@ class PytestClient:
             port=self._daemon_port,
             pytest_name=self._pytest_name,
             do_not_autowatch_fixtures=self._do_not_autowatch_fixtures,
-            use_watchman=self._use_watchman,
+            use_os_events=self._use_os_events,
             additional_args=self._additional_args,
+            poll_throttle=self._poll_throttle,
         )
