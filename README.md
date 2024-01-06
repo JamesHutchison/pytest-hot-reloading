@@ -104,7 +104,7 @@ This can easily be done in VS Code with the following launch profile:
         },
 ```
 
-The daemon can be configured to use either file system polling or OS-based polling.
+The daemon can be configured to use either file system polling or OS-based file system events.
 The polling behavior is used by default and has higher compatibility. For example, if you're using
 Docker for Windows with WSL2, you're going to have a bad time with inotify.
 
