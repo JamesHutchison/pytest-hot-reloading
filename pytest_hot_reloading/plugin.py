@@ -256,15 +256,11 @@ def monkey_patch_jurigged_function_definition():
             return ast_func
 
         def stash(self, lineno=1, col_offset=0):
-            # monkeypatch: There's an off-by-one bug coming from somewhere in jurigged.
-            #              This affects replaced functions. When line numbers are wrong
-            #              the debugger and inspection logic doesn't work as expected.
+            # monkeypatch to fix line numbers from decorators: See https://github.com/breuleux/jurigged/issues/29
             if not isinstance(self.parent, OrigFunctionDefinition):
                 co = self.get_object()
-                if co and (delta := lineno - co.co_firstlineno):
-                    delta -= 1  # fix off-by-one
-                    if delta != 0:
-                        self.recode(jurigged_utils.shift_lineno(co, delta), use_cache=False)
+                if co and (delta := lineno - self.node.extent.lineno):
+                    self.recode(jurigged_utils.shift_lineno(co, delta), use_cache=False)
 
             return super(OrigFunctionDefinition, self).stash(lineno, col_offset)
 
