@@ -3,6 +3,15 @@
 
 A hot reloading pytest daemon, implemented as a plugin.
 
+## Notice - Busted VS Code behavior - 5/28/2024
+It was noted that VS Code does not properly detect tests finishing. This is due to buggy experimental behavior that you opt-in to. To opt-out, add to your settings:
+
+```json
+"python.experiments.optOutFrom": [
+    "pythonTestAdapter"
+],
+```
+
 ## Features
 - Uses the [jurigged](https://github.com/breuleux/jurigged) library to watch and hot reload files
 - Caches test discovery in many situations
