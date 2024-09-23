@@ -324,7 +324,7 @@ def setup_jurigged(config: Config):
                 time.sleep(0.02 * poll_throttle)  # give CPU a break!
                 return listdir(*args, **kwargs)
 
-            super().__init__(stat, lagged_listdir, polling_interval * poll_throttle)
+            super().__init__(stat, lagged_listdir, polling_interval=polling_interval * poll_throttle)
 
     jurigged.live.PollingObserverVFS = NewPollingObserverVFS
 
